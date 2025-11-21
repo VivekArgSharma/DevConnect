@@ -22,11 +22,13 @@ export const PillBase: React.FC = () => {
   const prevSectionRef = useRef('home')
 
   const navItems: NavItem[] = [
-    { label: 'Home', id: 'home', path: '/' },
-    { label: 'Projects', id: 'projects', path: '/projects' },
-    { label: 'Blogs', id: 'blogs', path: '/blogs' },
-    { label: 'Post', id: 'post', path: '/post' },
-  ]
+  { label: 'Home', id: 'home', path: '/' },
+  { label: 'Projects', id: 'projects', path: '/projects' },
+  { label: 'Blogs', id: 'blogs', path: '/blogs' },
+  { label: 'Post', id: 'post', path: '/post' },
+  { label: 'Profile', id: 'profile', path: '/profile' },
+];
+
 
   // smooth animation
   const pillWidth = useSpring(140, { stiffness: 220, damping: 25 })
