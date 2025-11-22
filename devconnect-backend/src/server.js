@@ -12,12 +12,14 @@ const PORT = process.env.PORT || 4000;
 
 app.use(cors({
   origin: [
+    'http://localhost:8080',   // ✅ YOUR VITE FRONTEND
     'http://localhost:5173',
-    'http://localhost:3000'
-    // add your deployed frontend URL later
+    'http://localhost:3000',
+    'https://devconnect.lovable.app'
   ],
   credentials: true
 }));
+
 
 app.use(express.json());
 
