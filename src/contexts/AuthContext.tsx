@@ -1,134 +1,162 @@
-// src/contexts/AuthContext.tsx
-import { createContext, useContext, useEffect, useState } from 'react';
-import type { ReactNode } from 'react';
-import { supabase } from '@/lib/supabaseClient';
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  ReactNode,
+} from "react";
+import { createClient, Session, User } from "@supabase/supabase-js";
 
-interface Profile {
-  id: string;
-  full_name: string | null;
-  avatar_url: string | null;
-}
+const supabase = createClient(
+  import.meta.env.VITE_SUPABASE_URL!,
+  import.meta.env.VITE_SUPABASE_ANON_KEY!
+);
 
-interface AuthContextValue {
+interface AuthContextType {
   loading: boolean;
-  session: any | null;
-  profile: Profile | null;
+  session: Session | null;
+  user: User | null;
+  profile: any | null;
   accessToken: string | null;
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextValue | undefined>(undefined);
+const AuthContext = createContext<AuthContextType | null>(null);
 
-const API_URL = import.meta.env.VITE_API_URL as string;
+export const useAuth = () => {
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error("useAuth must be used inside AuthProvider");
+  return ctx;
+};
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [session, setSession] = useState<any | null>(null);
-  const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [session, setSession] = useState<Session | null>(null);
+  const [accessToken, setAccessToken] = useState<string | null>(null);
+  const [user, setUser] = useState<User | null>(null);
+  const [profile, setProfile] = useState<any | null>(null);
 
+  const API_URL = import.meta.env.VITE_API_URL;
+
+  // -------------------------
+  // 1. INITIAL SESSION LOAD
+  // -------------------------
   useEffect(() => {
-    const init = async () => {
-      const { data } = await supabase.auth.getSession();
-      setSession(data.session ?? null);
-      setLoading(false);
+    let ignore = false;
 
-      if (data.session?.access_token) {
-        await syncProfile(data.session.access_token);
+    async function loadSession() {
+      const {
+        data: { session: activeSession },
+      } = await supabase.auth.getSession();
+
+      if (!ignore) {
+        setSession(activeSession || null);
+        setUser(activeSession?.user || null);
+        setAccessToken(activeSession?.access_token || null);
       }
+
+      setLoading(false);
+    }
+
+    loadSession();
+
+    return () => {
+      ignore = true;
     };
+  }, []);
 
-    init();
-
+  // ----------------------------------------------------------
+  // 2. LISTEN FOR LOGIN / LOGOUT / TOKEN REFRESH EVENTS
+  // ----------------------------------------------------------
+  useEffect(() => {
     const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
-      setSession(newSession);
-      if (newSession?.access_token) {
-        await syncProfile(newSession.access_token);
-      } else {
+      data: authListener,
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      // event examples: "SIGNED_IN", "SIGNED_OUT", "TOKEN_REFRESHED"
+      setSession(session || null);
+      setUser(session?.user || null);
+      setAccessToken(session?.access_token || null);
+
+      if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
+        syncProfile(session);
+      }
+
+      if (event === "SIGNED_OUT") {
         setProfile(null);
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
   }, []);
 
-  const syncProfile = async (token: string) => {
+  // ----------------------------------------------------------
+  // 3. SYNC PROFILE WITH BACKEND WHEN SESSION CHANGES
+  // ----------------------------------------------------------
+  async function syncProfile(session: Session | null) {
+    if (!session?.access_token || !session.user) return;
+
     try {
-      const { data } = await supabase.auth.getUser();
-      const user = data.user;
+      const { user } = session;
 
-      if (!user) return;
-
-      const meta: any = user.user_metadata || {};
-
-      const full_name =
-        meta.full_name ||
-        meta.name ||
-        user.email?.split('@')[0] ||
-        null;
-
-      const avatar_url =
-        meta.avatar_url ||
-        meta.picture ||
-        null;
-
-      // Upsert profile in backend
+      // send info to backend
       await fetch(`${API_URL}/api/me/sync`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
+          Authorization: `Bearer ${session.access_token}`,
+          "Content-Type": "application/json",
         },
-        body: JSON.stringify({ full_name, avatar_url }),
+        body: JSON.stringify({
+          full_name: user.user_metadata.full_name,
+          avatar_url: user.user_metadata.avatar_url,
+        }),
       });
 
-      const res = await fetch(`${API_URL}/api/me`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+      setProfile({
+        full_name: user.user_metadata.full_name,
+        avatar_url: user.user_metadata.avatar_url,
       });
-
-      if (!res.ok) {
-        console.error('Failed to fetch profile from backend');
-        return;
-      }
-
-      const profileData = await res.json();
-      setProfile(profileData);
     } catch (err) {
-      console.error('syncProfile error', err);
+      console.error("Profile sync error:", err);
     }
-  };
+  }
 
-  const signInWithGoogle = async () => {
+  // ----------------------------------------------------------
+  // 4. SIGN-IN WITH GOOGLE (CORRECT SUPABASE v2 FLOW)
+  // ----------------------------------------------------------
+  async function signInWithGoogle() {
+    setLoading(true);
+
     const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
+      provider: "google",
       options: {
         redirectTo: window.location.origin,
       },
     });
 
-    if (error) {
-      console.error('Google sign-in error', error);
-      alert('Failed to sign in with Google');
-    }
-  };
+    if (error) console.error("Google login error:", error);
 
-  const signOut = async () => {
+    setLoading(false);
+  }
+
+  // ----------------------------------------------------------
+  // 5. SIGN OUT
+  // ----------------------------------------------------------
+  async function signOut() {
     await supabase.auth.signOut();
-    setSession(null);
     setProfile(null);
-  };
+  }
 
   return (
     <AuthContext.Provider
       value={{
         loading,
         session,
+        user,
         profile,
-        accessToken: session?.access_token ?? null,
+        accessToken,
         signInWithGoogle,
         signOut,
       }}
@@ -136,10 +164,4 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       {children}
     </AuthContext.Provider>
   );
-}
-
-export function useAuth() {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useAuth must be used within AuthProvider');
-  return ctx;
 }
