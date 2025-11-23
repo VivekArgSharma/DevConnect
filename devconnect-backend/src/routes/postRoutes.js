@@ -43,7 +43,7 @@ router.post('/', requireAuth, async (req, res) => {
       .single();
 
     if (error) {
-      console.error(error);
+      console.error('Supabase error creating post:', error);
       return res.status(500).json({ error: 'Failed to create post' });
     }
 
@@ -54,7 +54,7 @@ router.post('/', requireAuth, async (req, res) => {
   }
 });
 
-// List posts
+// List posts (public)
 router.get('/', async (req, res) => {
   try {
     const { type, featured, limit } = req.query;
@@ -79,7 +79,7 @@ router.get('/', async (req, res) => {
     const { data, error } = await query;
 
     if (error) {
-      console.error(error);
+      console.error('Supabase error fetching posts:', error);
       return res.status(500).json({ error: 'Failed to fetch posts' });
     }
 
@@ -90,7 +90,37 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Get single post by id
+// Get posts for the logged-in user
+router.get('/mine', requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { type } = req.query;
+
+    let query = supabaseAdmin
+      .from('posts')
+      .select('*, profiles!inner(full_name, avatar_url)')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+
+    if (type) {
+      query = query.eq('type', type);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      console.error('Supabase error fetching my posts:', error);
+      return res.status(500).json({ error: 'Failed to fetch your posts' });
+    }
+
+    return res.json(data);
+  } catch (err) {
+    console.error('Error fetching my posts:', err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get single post by id (public)
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
@@ -102,7 +132,7 @@ router.get('/:id', async (req, res) => {
       .single();
 
     if (error) {
-      console.error(error);
+      console.error('Supabase error fetching post:', error);
       return res.status(500).json({ error: 'Failed to fetch post' });
     }
 
@@ -113,6 +143,37 @@ router.get('/:id', async (req, res) => {
     return res.json(data);
   } catch (err) {
     console.error('Error fetching post:', err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Delete a post by id (only owner)
+router.delete('/:id', requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { id } = req.params;
+
+    const { data, error } = await supabaseAdmin
+      .from('posts')
+      .delete()
+      .eq('id', id)
+      .eq('user_id', userId)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Supabase error deleting post:', error);
+      return res.status(500).json({ error: 'Failed to delete post' });
+    }
+
+    if (!data) {
+      // Either post doesn't exist or doesn't belong to this user
+      return res.status(404).json({ error: 'Post not found' });
+    }
+
+    return res.json({ success: true });
+  } catch (err) {
+    console.error('Error deleting post:', err);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
