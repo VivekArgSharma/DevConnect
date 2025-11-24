@@ -1,32 +1,36 @@
 // src/routes/postRoutes.js
-import express from 'express';
-import { requireAuth } from '../middleware/authMiddleware.js';
-import { supabaseAdmin } from '../config/supabaseClient.js';
+
+import express from "express";
+import { requireAuth } from "../middleware/authMiddleware.js";
+import { supabaseAdmin } from "../config/supabaseClient.js";
 
 const router = express.Router();
 
-// Create a post
-router.post('/', requireAuth, async (req, res) => {
+/* -----------------------------------------------------
+   CREATE A POST
+----------------------------------------------------- */
+router.post("/", requireAuth, async (req, res) => {
   try {
     const userId = req.user.id;
+
     const {
-      type,                 // 'project' or 'blog'
+      type, // "project" or "blog"
       title,
       content,
-      tags,                 // optional array of strings
+      tags,
       cover_image_url,
-      images,               // optional array of strings
+      images,
       short_description,
       project_link,
       github_link,
     } = req.body;
 
     if (!type || !title) {
-      return res.status(400).json({ error: 'type and title are required' });
+      return res.status(400).json({ error: "type and title are required" });
     }
 
     const { data, error } = await supabaseAdmin
-      .from('posts')
+      .from("posts")
       .insert({
         user_id: userId,
         type,
@@ -43,138 +47,220 @@ router.post('/', requireAuth, async (req, res) => {
       .single();
 
     if (error) {
-      console.error('Supabase error creating post:', error);
-      return res.status(500).json({ error: 'Failed to create post' });
+      console.error("Create post error:", error);
+      return res.status(500).json({ error: "Failed to create post" });
     }
 
     return res.status(201).json(data);
   } catch (err) {
-    console.error('Error creating post:', err);
-    return res.status(500).json({ error: 'Internal server error' });
+    console.error("Unexpected create post error:", err);
+    return res.status(500).json({ error: "Internal server error" });
   }
 });
 
-// List posts (public)
-router.get('/', async (req, res) => {
+/* -----------------------------------------------------
+   LIST POSTS (Public)
+----------------------------------------------------- */
+router.get("/", async (req, res) => {
   try {
-    const { type, featured, limit } = req.query;
+    const { type } = req.query;
 
     let query = supabaseAdmin
-      .from('posts')
-      .select('*, profiles!inner(full_name, avatar_url)')
-      .order('created_at', { ascending: false });
+      .from("posts")
+      .select("*, profiles(full_name, avatar_url)")
+      .order("created_at", { ascending: false });
 
-    if (type) {
-      query = query.eq('type', type);
-    }
-
-    if (featured === 'true') {
-      query = query.eq('is_featured', true);
-    }
-
-    if (limit) {
-      query = query.limit(parseInt(limit, 10));
-    }
+    if (type) query = query.eq("type", type);
 
     const { data, error } = await query;
 
     if (error) {
-      console.error('Supabase error fetching posts:', error);
-      return res.status(500).json({ error: 'Failed to fetch posts' });
+      console.error("Fetch posts error:", error);
+      return res.status(500).json({ error: "Failed to fetch posts" });
     }
 
     return res.json(data);
   } catch (err) {
-    console.error('Error fetching posts:', err);
-    return res.status(500).json({ error: 'Internal server error' });
+    console.error("Unexpected fetch posts error:", err);
+    return res.status(500).json({ error: "Internal server error" });
   }
 });
 
-// Get posts for the logged-in user
-router.get('/mine', requireAuth, async (req, res) => {
+/* -----------------------------------------------------
+   GET MY POSTS (Authenticated)
+----------------------------------------------------- */
+router.get("/mine", requireAuth, async (req, res) => {
   try {
     const userId = req.user.id;
     const { type } = req.query;
 
     let query = supabaseAdmin
-      .from('posts')
-      .select('*, profiles!inner(full_name, avatar_url)')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false });
+      .from("posts")
+      .select("*, profiles(full_name, avatar_url)")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false });
 
-    if (type) {
-      query = query.eq('type', type);
-    }
+    if (type) query = query.eq("type", type);
 
     const { data, error } = await query;
 
     if (error) {
-      console.error('Supabase error fetching my posts:', error);
-      return res.status(500).json({ error: 'Failed to fetch your posts' });
+      console.error("Fetch my posts error:", error);
+      return res.status(500).json({ error: "Failed to fetch posts" });
     }
 
     return res.json(data);
   } catch (err) {
-    console.error('Error fetching my posts:', err);
-    return res.status(500).json({ error: 'Internal server error' });
+    console.error("Unexpected my posts error:", err);
+    return res.status(500).json({ error: "Internal server error" });
   }
 });
 
-// Get single post by id (public)
-router.get('/:id', async (req, res) => {
+/* -----------------------------------------------------
+   GET SINGLE POST
+----------------------------------------------------- */
+router.get("/:id", async (req, res) => {
   try {
-    const { id } = req.params;
+    const postId = req.params.id;
 
     const { data, error } = await supabaseAdmin
-      .from('posts')
-      .select('*, profiles!inner(full_name, avatar_url)')
-      .eq('id', id)
+      .from("posts")
+      .select("*, profiles(full_name, avatar_url)")
+      .eq("id", postId)
       .single();
 
-    if (error) {
-      console.error('Supabase error fetching post:', error);
-      return res.status(500).json({ error: 'Failed to fetch post' });
-    }
-
-    if (!data) {
-      return res.status(404).json({ error: 'Post not found' });
+    if (error || !data) {
+      return res.status(404).json({ error: "Post not found" });
     }
 
     return res.json(data);
   } catch (err) {
-    console.error('Error fetching post:', err);
-    return res.status(500).json({ error: 'Internal server error' });
+    console.error("Unexpected fetch single post error:", err);
+    return res.status(500).json({ error: "Internal server error" });
   }
 });
 
-// Delete a post by id (only owner)
-router.delete('/:id', requireAuth, async (req, res) => {
+/* -----------------------------------------------------
+   DELETE POST
+----------------------------------------------------- */
+router.delete("/:id", requireAuth, async (req, res) => {
   try {
     const userId = req.user.id;
-    const { id } = req.params;
+    const postId = req.params.id;
 
-    const { data, error } = await supabaseAdmin
-      .from('posts')
-      .delete()
-      .eq('id', id)
-      .eq('user_id', userId)
-      .select()
+    // Verify owner
+    const { data: post, error: ownerError } = await supabaseAdmin
+      .from("posts")
+      .select("user_id")
+      .eq("id", postId)
       .single();
 
-    if (error) {
-      console.error('Supabase error deleting post:', error);
-      return res.status(500).json({ error: 'Failed to delete post' });
+    if (ownerError || !post) {
+      return res.status(404).json({ error: "Post not found" });
     }
 
-    if (!data) {
-      // Either post doesn't exist or doesn't belong to this user
-      return res.status(404).json({ error: 'Post not found' });
+    if (post.user_id !== userId) {
+      return res.status(403).json({ error: "You cannot delete this post" });
+    }
+
+    const { error: deleteError } = await supabaseAdmin
+      .from("posts")
+      .delete()
+      .eq("id", postId);
+
+    if (deleteError) {
+      console.error("Delete error:", deleteError);
+      return res.status(500).json({ error: "Failed to delete post" });
     }
 
     return res.json({ success: true });
   } catch (err) {
-    console.error('Error deleting post:', err);
-    return res.status(500).json({ error: 'Internal server error' });
+    console.error("Unexpected delete error:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+/* -----------------------------------------------------
+   UPVOTE / TOGGLE UPVOTE
+----------------------------------------------------- */
+router.post("/:id/upvote", requireAuth, async (req, res) => {
+  try {
+    const postId = req.params.id;
+    const userId = req.user.id;
+
+    // Check if user already upvoted
+    const { data: existing, error: checkError } = await supabaseAdmin
+      .from("post_upvotes")
+      .select("*")
+      .eq("post_id", postId)
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (checkError) {
+      console.error("Check upvote error:", checkError);
+      return res.status(500).json({ error: "Error checking upvote status" });
+    }
+
+    // If exists → remove upvote (toggle)
+    if (existing) {
+      await supabaseAdmin
+        .from("post_upvotes")
+        .delete()
+        .eq("post_id", postId)
+        .eq("user_id", userId);
+
+      // Update likes_count
+      await supabaseAdmin.rpc("update_post_likes_count", { pid: postId });
+
+      return res.json({ upvoted: false });
+    }
+
+    // Otherwise → add upvote
+    const { error: insertError } = await supabaseAdmin
+      .from("post_upvotes")
+      .insert({
+        post_id: postId,
+        user_id: userId,
+      });
+
+    if (insertError) {
+      console.error("Insert upvote error:", insertError);
+      return res.status(500).json({ error: "Failed to upvote" });
+    }
+
+    // Update likes count
+    await supabaseAdmin.rpc("update_post_likes_count", { pid: postId });
+
+    return res.json({ upvoted: true });
+  } catch (err) {
+    console.error("Unexpected upvote error:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+/* -----------------------------------------------------
+   TOP POSTS (Top 8 by likes)
+----------------------------------------------------- */
+router.get("/top/projects", async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit || "8", 10);
+
+    const { data, error } = await supabaseAdmin
+      .from("posts")
+      .select("*, profiles(full_name, avatar_url)")
+      .eq("type", "project")
+      .order("likes_count", { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      console.error("Top projects error:", error);
+      return res.status(500).json({ error: "Failed to fetch top projects" });
+    }
+
+    return res.json(data);
+  } catch (err) {
+    console.error("Unexpected top posts error:", err);
+    return res.status(500).json({ error: "Internal server error" });
   }
 });
 

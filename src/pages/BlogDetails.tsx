@@ -1,69 +1,107 @@
-// src/pages/BlogDetails.tsx
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
+import { useAuth } from "@/contexts/AuthContext";
+import { upvotePost } from "@/lib/upvote";
 
-const API_URL = import.meta.env.VITE_API_URL as string;
+const API_URL = import.meta.env.VITE_API_URL;
 
-const fetchBlog = async (id: string) => {
-  const res = await fetch(`${API_URL}/api/posts/${id}`);
-  if (!res.ok) throw new Error("Failed to fetch blog");
-  return res.json();
-};
+export default function BlogDetails() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const { accessToken, user } = useAuth();
 
-const BlogDetails = () => {
-  const { id } = useParams<{ id: string }>();
-
-  const { data, isLoading, error } = useQuery({
+  const {
+    data: post,
+    isLoading,
+    error,
+    refetch,
+  } = useQuery({
     queryKey: ["blog", id],
-    enabled: !!id,
-    queryFn: () => fetchBlog(id as string),
+    queryFn: async () => {
+      const res = await fetch(`${API_URL}/api/posts/${id}`);
+      if (!res.ok) throw new Error("Post not found");
+      return res.json();
+    },
   });
 
   if (isLoading) {
     return (
-      <div className="min-h-screen pt-32 px-4 flex justify-center">
-        <p>Loading blog...</p>
+      <div className="min-h-screen flex justify-center items-center">
+        <p className="text-gray-600">Loading blog...</p>
       </div>
     );
   }
 
-  if (error || !data) {
+  if (error || !post) {
     return (
-      <div className="min-h-screen pt-32 px-4 flex justify-center">
-        <p className="text-red-500">Blog not found.</p>
+      <div className="min-h-screen flex justify-center items-center">
+        <p className="text-red-600">Blog not found.</p>
       </div>
     );
   }
 
-  const blog = data;
+  const isOwner = user?.id === post.user_id;
+
+  const handleDelete = async () => {
+    if (!accessToken) return;
+
+    const confirmed = window.confirm("Delete this blog?");
+    if (!confirmed) return;
+
+    const res = await fetch(`${API_URL}/api/posts/${id}`, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+
+    if (!res.ok) {
+      alert("Failed to delete.");
+      return;
+    }
+
+    navigate("/blogs");
+  };
 
   return (
-    <div className="min-h-screen bg-background pt-32 px-4">
-      <div className="max-w-3xl mx-auto bg-white rounded-2xl shadow-md p-8">
-        <h1 className="text-3xl font-bold mb-2">{blog.title}</h1>
-        <p className="text-sm text-gray-500 mb-4">
-          By {blog.profiles?.full_name || "Anonymous Dev"}
-        </p>
+    <div className="max-w-3xl mx-auto py-10 px-4 space-y-6">
+      <img
+        src={post.cover_image_url}
+        alt={post.title}
+        className="w-full h-72 object-cover rounded-xl shadow"
+      />
 
-        {blog.images && blog.images.length > 0 && (
-          <img
-            src={blog.images[0]}
-            alt={blog.title}
-            className="w-full rounded-xl mb-6 object-cover max-h-80"
-          />
-        )}
+      <h1 className="text-3xl font-bold">{post.title}</h1>
 
-        {blog.short_description && (
-          <p className="text-gray-700 mb-4">{blog.short_description}</p>
-        )}
-
-        <div className="space-y-4 mb-6">
-          <h2 className="text-xl font-semibold">Blog Content</h2>
-          <p className="text-gray-800 whitespace-pre-wrap">{blog.content}</p>
-        </div>
+      <div className="flex items-center gap-3 text-gray-600">
+        <img
+          src={post.profiles?.avatar_url}
+          alt="author"
+          className="w-10 h-10 rounded-full border"
+        />
+        <span>{post.profiles?.full_name || "Unknown"}</span>
       </div>
+
+      <div className="flex items-center gap-4 pt-4">
+        <Button
+          variant="outline"
+          onClick={async () => {
+            await upvotePost(post.id, accessToken, API_URL);
+            refetch();
+          }}
+        >
+          ⬆ Upvote ({post.likes_count})
+        </Button>
+
+        {isOwner && (
+          <Button variant="destructive" onClick={handleDelete}>
+            Delete
+          </Button>
+        )}
+      </div>
+
+      <p className="text-gray-700 whitespace-pre-line">{post.content}</p>
     </div>
   );
-};
-
-export default BlogDetails;
+}

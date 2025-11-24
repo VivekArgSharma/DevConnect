@@ -1,5 +1,6 @@
-// src/components/ui/project-card.tsx
-import React from "react";
+import { FC } from "react";
+import { Button } from "@/components/ui/button";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface ProjectCardProps {
   image: string;
@@ -7,63 +8,72 @@ interface ProjectCardProps {
   author: string;
   techStack: string;
   description: string;
-  onClick?: () => void;
+  onClick: () => void;
+  likes_count?: number;
+  onUpvote?: () => void;
 }
 
-export const ProjectCard: React.FC<ProjectCardProps> = ({
+export const ProjectCard: FC<ProjectCardProps> = ({
   image,
   title,
   author,
   techStack,
   description,
   onClick,
+  likes_count = 0,
+  onUpvote,
 }) => {
+  const { session } = useAuth();
+
   return (
     <div
-      onClick={onClick}
-      className="
-        w-full 
-        bg-white 
-        rounded-xl 
-        shadow-md 
-        overflow-hidden 
-        border 
-        border-gray-200
-        hover:shadow-lg
-        transition-all 
-        duration-200 
-        flex 
-        flex-col
-        sm:flex-row
-        cursor-pointer
-      "
+      className="border rounded-xl shadow-sm overflow-hidden hover:shadow-md transition cursor-pointer bg-white"
     >
-      <div className="sm:w-1/3 h-48 sm:h-auto relative">
-        <img
-          src={image}
-          alt={title}
-          className="w-full h-full object-cover"
-        />
-      </div>
+      <img
+        src={image}
+        alt={title}
+        className="w-full h-48 object-cover"
+        onClick={onClick}
+      />
 
-      <div className="sm:w-2/3 p-6 flex flex-col justify-between">
-        <div>
-          <h3 className="text-xl font-semibold text-gray-900 mb-2">
-            {title}
-          </h3>
+      <div className="p-4 space-y-2">
+        <h3
+          className="font-semibold text-lg"
+          onClick={onClick}
+        >
+          {title}
+        </h3>
 
-          <p className="text-sm text-gray-500 mb-2">
-            {techStack}
-          </p>
+        <p className="text-sm text-gray-500">{author}</p>
 
-          <p className="text-gray-700 text-sm line-clamp-3">
-            {description}
-          </p>
-        </div>
+        <p className="text-xs text-gray-600">{techStack}</p>
 
-        <p className="text-sm text-gray-600 mt-3">
-          <span className="font-semibold">By:</span> {author}
+        <p
+          className="text-sm text-gray-700 line-clamp-3"
+          onClick={onClick}
+        >
+          {description}
         </p>
+
+        <div className="flex items-center justify-between pt-3">
+          <div className="flex items-center gap-1">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={(e) => {
+                e.stopPropagation();
+                onUpvote?.();
+              }}
+              disabled={!session}
+            >
+              ⬆ {likes_count}
+            </Button>
+          </div>
+
+          <Button size="sm" onClick={onClick}>
+            View
+          </Button>
+        </div>
       </div>
     </div>
   );

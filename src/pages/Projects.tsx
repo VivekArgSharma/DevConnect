@@ -1,104 +1,45 @@
-// src/pages/Projects.tsx
-import { ProjectCard } from "@/components/ui/project-card";
-import { Button } from "@/components/ui/button";
-import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
+import { ProjectCard } from "@/components/ui/project-card";
+import { upvotePost } from "@/lib/upvote";
+import { useAuth } from "@/contexts/AuthContext";
 
-const API_URL = import.meta.env.VITE_API_URL as string;
+const API_URL = import.meta.env.VITE_API_URL;
 
-interface Post {
-  id: string;
-  title: string;
-  short_description: string | null;
-  content: string | null;
-  cover_image_url: string | null;
-  tags: string[] | null;
-  profiles?: {
-    full_name: string | null;
-    avatar_url: string | null;
-  };
-}
-
-const fetchProjects = async (): Promise<Post[]> => {
-  const res = await fetch(`${API_URL}/api/posts?type=project`);
-  if (!res.ok) throw new Error("Failed to fetch projects");
-  return res.json();
-};
-
-const Projects = () => {
-  const [visible, setVisible] = useState(12);
+export default function Projects() {
   const navigate = useNavigate();
+  const { accessToken } = useAuth();
 
-  const { data, isLoading, error } = useQuery({
-    queryKey: ["posts", "projects"],
-    queryFn: fetchProjects,
+  const { data: posts = [], refetch } = useQuery({
+    queryKey: ["projects"],
+    queryFn: async () => {
+      const res = await fetch(`${API_URL}/api/posts?type=project`);
+      return res.json();
+    },
   });
 
-  const projects = data || [];
-
   return (
-    <div className="min-h-screen bg-background pt-32 px-4">
-      <div className="max-w-5xl mx-auto">
-        <h1 className="text-3xl font-bold mb-6 text-foreground">
-          Dev Projects
-        </h1>
-        <p className="text-muted-foreground mb-10">
-          Discover projects shared by developers on DevConnect.
-        </p>
+    <div className="max-w-6xl mx-auto py-10 space-y-8 px-4">
+      <h1 className="text-3xl font-bold">All Projects</h1>
 
-        {isLoading && <p>Loading projects...</p>}
-        {error && (
-          <p className="text-red-500 text-sm">
-            Failed to load projects. Please try again.
-          </p>
-        )}
-
-        <div className="space-y-6">
-          {projects.slice(0, visible).map((item) => (
-            <ProjectCard
-              key={item.id}
-              image={
-                item.cover_image_url ||
-                "https://images.unsplash.com/photo-1518770660439-4636190af475?w=800"
-              }
-              title={item.title}
-              author={item.profiles?.full_name || "Anonymous Dev"}
-              techStack={
-                item.tags && item.tags.length > 0
-                  ? item.tags.join(", ")
-                  : "Project"
-              }
-              description={
-                item.short_description ||
-                (item.content
-                  ? item.content.slice(0, 160) + "..."
-                  : "No description")
-              }
-              onClick={() => navigate(`/projects/${item.id}`)}
-            />
-          ))}
-
-          {projects.length === 0 && !isLoading && !error && (
-            <p className="text-sm text-muted-foreground">
-              No projects yet. Be the first to post!
-            </p>
-          )}
-        </div>
-
-        {projects.length > visible && (
-          <div className="flex justify-center mt-10">
-            <Button
-              onClick={() => setVisible(visible + 12)}
-              className="px-8 py-6 text-lg"
-            >
-              See more
-            </Button>
-          </div>
-        )}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {posts.map((post) => (
+          <ProjectCard
+            key={post.id}
+            image={post.cover_image_url}
+            title={post.title}
+            author={post.profiles?.full_name || "Unknown"}
+            techStack={post.tags?.join(", ") || "Project"}
+            description={post.short_description || ""}
+            likes_count={post.likes_count}
+            onClick={() => navigate(`/projects/${post.id}`)}
+            onUpvote={async () => {
+              await upvotePost(post.id, accessToken, API_URL);
+              refetch();
+            }}
+          />
+        ))}
       </div>
     </div>
   );
-};
-
-export default Projects;
+}

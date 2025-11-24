@@ -1,116 +1,127 @@
-// src/pages/ProjectDetails.tsx
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
+import { useAuth } from "@/contexts/AuthContext";
+import { upvotePost } from "@/lib/upvote";
 
-const API_URL = import.meta.env.VITE_API_URL as string;
+const API_URL = import.meta.env.VITE_API_URL;
 
-const fetchProject = async (id: string) => {
-  const res = await fetch(`${API_URL}/api/posts/${id}`);
-  if (!res.ok) throw new Error("Failed to fetch project");
-  return res.json();
-};
+export default function ProjectDetails() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const { accessToken, user } = useAuth();
 
-const ProjectDetails = () => {
-  const { id } = useParams<{ id: string }>();
-
-  const { data, isLoading, error } = useQuery({
+  const {
+    data: post,
+    isLoading,
+    error,
+    refetch,
+  } = useQuery({
     queryKey: ["project", id],
-    enabled: !!id,
-    queryFn: () => fetchProject(id as string),
+    queryFn: async () => {
+      const res = await fetch(`${API_URL}/api/posts/${id}`);
+      if (!res.ok) throw new Error("Post not found");
+      return res.json();
+    },
   });
 
   if (isLoading) {
     return (
-      <div className="min-h-screen pt-32 px-4 flex justify-center">
-        <p>Loading project...</p>
+      <div className="min-h-screen flex justify-center items-center">
+        <p className="text-gray-600">Loading project...</p>
       </div>
     );
   }
 
-  if (error || !data) {
+  if (error || !post) {
     return (
-      <div className="min-h-screen pt-32 px-4 flex justify-center">
-        <p className="text-red-500">Project not found.</p>
+      <div className="min-h-screen flex justify-center items-center">
+        <p className="text-red-600">Project not found.</p>
       </div>
     );
   }
 
-  const project = data;
+  const isOwner = user?.id === post.user_id;
+
+  const handleDelete = async () => {
+    if (!accessToken) return;
+
+    const confirmed = window.confirm("Delete this project?");
+    if (!confirmed) return;
+
+    const res = await fetch(`${API_URL}/api/posts/${id}`, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+
+    if (!res.ok) {
+      alert("Failed to delete.");
+      return;
+    }
+
+    navigate("/projects");
+  };
 
   return (
-    <div className="min-h-screen bg-background pt-32 px-4">
-      <div className="max-w-3xl mx-auto bg-white rounded-2xl shadow-md p-8">
-        <h1 className="text-3xl font-bold mb-2">{project.title}</h1>
-        <p className="text-sm text-gray-500 mb-4">
-          By {project.profiles?.full_name || "Anonymous Dev"}
-        </p>
+    <div className="max-w-3xl mx-auto py-10 px-4 space-y-6">
+      <img
+        src={post.cover_image_url}
+        alt={post.title}
+        className="w-full h-72 object-cover rounded-xl shadow"
+      />
 
-        {project.cover_image_url && (
-          <img
-            src={project.cover_image_url}
-            alt={project.title}
-            className="w-full rounded-xl mb-6 object-cover max-h-80"
-          />
-        )}
+      <h1 className="text-3xl font-bold">{post.title}</h1>
 
-        {project.short_description && (
-          <p className="text-gray-700 mb-4">{project.short_description}</p>
-        )}
+      <div className="flex items-center gap-3 text-gray-600">
+        <img
+          src={post.profiles?.avatar_url}
+          alt="author"
+          className="w-10 h-10 rounded-full border"
+        />
+        <span>{post.profiles?.full_name}</span>
+      </div>
 
-        <div className="space-y-4 mb-6">
-          <h2 className="text-xl font-semibold">Details</h2>
-          <p className="text-gray-800 whitespace-pre-wrap">
-            {project.content}
-          </p>
-        </div>
+      <div className="flex items-center gap-4 pt-4">
+        <Button
+          variant="outline"
+          onClick={async () => {
+            await upvotePost(post.id, accessToken, API_URL);
+            refetch();
+          }}
+        >
+          ⬆ Upvote ({post.likes_count})
+        </Button>
 
-        <div className="space-y-2 mb-6">
-          {project.project_link && (
-            <p>
-              <span className="font-semibold">Live site:</span>{" "}
-              <a
-                href={project.project_link}
-                target="_blank"
-                rel="noreferrer"
-                className="text-blue-600 underline"
-              >
-                {project.project_link}
-              </a>
-            </p>
-          )}
-          {project.github_link && (
-            <p>
-              <span className="font-semibold">GitHub:</span>{" "}
-              <a
-                href={project.github_link}
-                target="_blank"
-                rel="noreferrer"
-                className="text-blue-600 underline"
-              >
-                {project.github_link}
-              </a>
-            </p>
-          )}
-        </div>
-
-        {project.images && project.images.length > 0 && (
-          <div className="space-y-3">
-            <h2 className="text-xl font-semibold">Screenshots</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {project.images.map((url: string) => (
-                <img
-                  key={url}
-                  src={url}
-                  alt="Screenshot"
-                  className="w-full rounded-lg object-cover max-h-64"
-                />
-              ))}
-            </div>
-          </div>
+        {isOwner && (
+          <Button variant="destructive" onClick={handleDelete}>
+            Delete
+          </Button>
         )}
       </div>
+
+      <p className="text-gray-700 whitespace-pre-line">{post.content}</p>
+
+      {post.project_link && (
+        <a
+          href={post.project_link}
+          target="_blank"
+          className="text-blue-600 underline block mt-4"
+        >
+          Project Link
+        </a>
+      )}
+
+      {post.github_link && (
+        <a
+          href={post.github_link}
+          target="_blank"
+          className="text-blue-600 underline block"
+        >
+          GitHub Repository
+        </a>
+      )}
     </div>
   );
-};
-
-export default ProjectDetails;
+}
