@@ -8,6 +8,7 @@ import { useAuth } from "@/contexts/AuthContext";
 
 import { upvotePost } from "@/lib/upvote";
 import { fetchComments, createComment, deleteComment } from "@/lib/comments";
+
 import { useState } from "react";
 
 const API_URL = import.meta.env.VITE_API_URL as string;
@@ -18,75 +19,71 @@ export default function ProjectDetails() {
   const { accessToken, session, user } = useAuth();
   const queryClient = useQueryClient();
 
-  // Fetch post
+  // ---------- FETCH PROJECT ----------
   const {
     data: post,
-    isLoading,
-    error,
+    isPending: postLoading,
+    error: postError,
     refetch,
   } = useQuery({
     queryKey: ["project", id],
     queryFn: async () => {
       const res = await fetch(`${API_URL}/api/posts/${id}`);
-      if (!res.ok) throw new Error("Post not found");
+      if (!res.ok) throw new Error("Project not found");
       return res.json();
     },
     enabled: !!id,
   });
 
-  // Fetch comments
+  // ---------- FETCH COMMENTS ----------
   const {
     data: comments = [],
-    isLoading: commentsLoading,
+    isPending: commentsLoading,
   } = useQuery({
     queryKey: ["comments", id],
     queryFn: () => fetchComments(id!),
     enabled: !!id,
   });
 
-  // Local state for comments
+  // ---------- LOCAL STATE ----------
   const [newComment, setNewComment] = useState("");
   const [replyTo, setReplyTo] = useState<string | null>(null);
   const [replyText, setReplyText] = useState("");
 
-  // Create comment
+  // ---------- CREATE COMMENT ----------
   const createMutation = useMutation({
-    mutationFn: (payload: { post_id: string; content: string; parent_id?: string | null }) =>
-      createComment(payload.post_id, payload.content, accessToken!, payload.parent_id),
+    mutationFn: (payload: {
+      post_id: string;
+      content: string;
+      parent_id?: string | null;
+    }) =>
+      createComment(
+        payload.post_id,
+        payload.content,
+        accessToken!,
+        payload.parent_id
+      ),
+
     onSuccess: () => {
       setNewComment("");
       setReplyText("");
       setReplyTo(null);
+
       queryClient.invalidateQueries({ queryKey: ["comments", id] });
     },
   });
 
-  // Delete comment
+  // ---------- DELETE COMMENT ----------
   const deleteMutation = useMutation({
-    mutationFn: (commentId: string) => deleteComment(commentId, accessToken!),
+    mutationFn: (commentId: string) =>
+      deleteComment(commentId, accessToken!),
+
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["comments", id] });
     },
   });
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex justify-center items-center">
-        <p className="text-gray-600">Loading project...</p>
-      </div>
-    );
-  }
-
-  if (error || !post) {
-    return (
-      <div className="min-h-screen flex justify-center items-center">
-        <p className="text-red-600">Project not found.</p>
-      </div>
-    );
-  }
-
-  const isOwner = user?.id === post.user_id;
-
+  // ---------- DELETE POST ----------
   const handleDelete = async () => {
     if (!accessToken) return;
 
@@ -98,15 +95,26 @@ export default function ProjectDetails() {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
 
-    if (!res.ok) {
-      alert("Failed to delete");
-      return;
-    }
-
-    navigate("/projects");
+    if (res.ok) navigate("/projects");
   };
 
-  // Convert flat comments → nested
+  if (postLoading)
+    return (
+      <div className="min-h-screen flex justify-center items-center">
+        Loading…
+      </div>
+    );
+
+  if (postError || !post)
+    return (
+      <div className="min-h-screen flex justify-center items-center">
+        Project not found.
+      </div>
+    );
+
+  const isOwner = user?.id === post.user_id;
+
+  // ---------- BUILD COMMENT TREE ----------
   const buildTree = (arr: any[]) => {
     const map = new Map();
     arr.forEach((c) => map.set(c.id, { ...c, replies: [] }));
@@ -116,7 +124,9 @@ export default function ProjectDetails() {
       if (c.parent_id) {
         const parent = map.get(c.parent_id);
         if (parent) parent.replies.push(c);
-      } else roots.push(c);
+      } else {
+        roots.push(c);
+      }
     }
     return roots;
   };
@@ -125,16 +135,17 @@ export default function ProjectDetails() {
 
   return (
     <div className="max-w-3xl mx-auto py-10 px-4 space-y-6">
-      {/* Banner */}
+      {/* COVER IMAGE */}
       <img
         src={post.cover_image_url}
         alt={post.title}
         className="w-full h-72 object-cover rounded-xl shadow"
       />
 
+      {/* TITLE */}
       <h1 className="text-3xl font-bold">{post.title}</h1>
 
-      {/* Author */}
+      {/* AUTHOR */}
       <div className="flex items-center gap-3 text-gray-600">
         <img
           src={post.profiles?.avatar_url}
@@ -143,8 +154,8 @@ export default function ProjectDetails() {
         <span>{post.profiles?.full_name}</span>
       </div>
 
-      {/* Upvote + delete */}
-      <div className="flex items-center gap-4 pt-4">
+      {/* UPVOTE + DELETE */}
+      <div className="flex gap-4 pt-4">
         <Button
           variant="outline"
           onClick={async () => {
@@ -162,66 +173,79 @@ export default function ProjectDetails() {
         )}
       </div>
 
-      {/* Content */}
+      {/* CONTENT */}
       <p className="text-gray-700 whitespace-pre-line">{post.content}</p>
 
-      {/* Links */}
+      {/* LINKS */}
       {post.project_link && (
-        <a href={post.project_link} target="_blank" className="text-blue-600 underline">
+        <a
+          href={post.project_link}
+          target="_blank"
+          className="text-blue-600 underline block mt-4"
+        >
           Project Link
         </a>
       )}
 
       {post.github_link && (
-        <a href={post.github_link} target="_blank" className="text-blue-600 underline block">
+        <a
+          href={post.github_link}
+          target="_blank"
+          className="text-blue-600 underline block"
+        >
           GitHub Repository
         </a>
       )}
 
-      {/* COMMENTS */}
+      {/* COMMENTS SECTION */}
       <hr className="my-6" />
       <h2 className="text-xl font-bold">Comments</h2>
 
-      {/* Add new comment */}
-      <div className="border p-4 rounded-lg bg-white">
+      {/* ADD COMMENT */}
+      <div className="border p-4 rounded-lg">
         {!session ? (
-          <p className="text-gray-500">
-            Sign in to comment.{" "}
-            <button
-              className="underline"
+          <p>
+            You must{" "}
+            <span
+              className="underline cursor-pointer"
               onClick={() => navigate("/profile")}
             >
-              Sign in
-            </button>
+              sign in
+            </span>{" "}
+            to comment.
           </p>
         ) : (
           <>
             <Textarea
-              placeholder="Write a comment..."
-              value={newComment}
-              onChange={(e) => setNewComment(e.target.value)}
               rows={3}
+              value={newComment}
+              placeholder="Write a comment..."
+              onChange={(e) => setNewComment(e.target.value)}
             />
+
             <div className="flex justify-end mt-2">
               <Button
-                onClick={() => {
-                  if (!newComment.trim()) return;
-                  createMutation.mutate({ post_id: id!, content: newComment.trim() });
-                }}
+                disabled={createMutation.isPending}
+                onClick={() =>
+                  createMutation.mutate({
+                    post_id: id!,
+                    content: newComment.trim(),
+                  })
+                }
               >
-                Post Comment
+                {createMutation.isPending ? "Posting…" : "Post Comment"}
               </Button>
             </div>
           </>
         )}
       </div>
 
-      {/* Comment List */}
+      {/* COMMENT LIST */}
       <div className="space-y-3">
         {commentsLoading ? (
           <p>Loading comments...</p>
         ) : commentTree.length === 0 ? (
-          <p className="text-gray-500">No comments yet.</p>
+          <p>No comments yet.</p>
         ) : (
           commentTree.map((c: any) => (
             <CommentItem
@@ -248,7 +272,9 @@ export default function ProjectDetails() {
   );
 }
 
-// COMMENT ITEM COMPONENT
+// ------------------------------------------------------
+//  COMMENT COMPONENT (recursive)
+// ------------------------------------------------------
 function CommentItem({
   comment,
   session,
@@ -265,25 +291,24 @@ function CommentItem({
     `https://ui-avatars.com/api/?name=${author}&background=0D8ABC&color=fff`;
 
   return (
-    <div className="border rounded-lg p-4 bg-white">
+    <div className="border p-4 rounded-lg bg-white">
       <div className="flex gap-3">
         <img src={avatar} className="w-10 h-10 rounded-full" />
+
         <div className="flex-1">
           <p className="font-semibold">{author}</p>
-          <p className="text-sm text-gray-600">{comment.content}</p>
+          <p className="text-gray-700 whitespace-pre-wrap">
+            {comment.content}
+          </p>
 
-          {/* Reply */}
-          <button
-            className="text-xs text-gray-500 underline mt-2"
-            onClick={() => onReply(comment.id)}
-          >
+          {/* Reply / Delete */}
+          <button className="underline text-xs" onClick={() => onReply(comment.id)}>
             Reply
           </button>
 
-          {/* Delete */}
           {session?.user?.id === comment.user_id && (
             <button
-              className="text-xs text-red-500 underline ml-3"
+              className="text-red-500 underline text-xs ml-2"
               onClick={() => onDelete(comment.id)}
             >
               Delete
@@ -306,7 +331,7 @@ function CommentItem({
 
           {/* Replies */}
           {comment.replies.length > 0 && (
-            <div className="pl-6 mt-3 border-l space-y-2">
+            <div className="mt-3 pl-6 border-l space-y-2">
               {comment.replies.map((r: any) => (
                 <CommentItem
                   key={r.id}
@@ -316,9 +341,7 @@ function CommentItem({
                   replyText={replyText}
                   setReplyText={setReplyText}
                   onReply={onReply}
-                  onAddReply={() =>
-                    createComment(r.post_id, replyText.trim(), session.access_token, r.id)
-                  }
+                  onAddReply={onAddReply}
                   onDelete={onDelete}
                 />
               ))}

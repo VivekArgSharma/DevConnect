@@ -1,4 +1,3 @@
-// src/pages/BlogDetails.tsx
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
@@ -19,10 +18,11 @@ export default function BlogDetails() {
   const { accessToken, session, user } = useAuth();
   const queryClient = useQueryClient();
 
+  // ---------- FETCH BLOG ----------
   const {
     data: post,
-    isLoading,
-    error,
+    isPending: postLoading,
+    error: postError,
     refetch,
   } = useQuery({
     queryKey: ["blog", id],
@@ -31,26 +31,32 @@ export default function BlogDetails() {
       if (!res.ok) throw new Error("Blog not found");
       return res.json();
     },
+    enabled: !!id,
   });
 
-  // Fetch comments
+  // ---------- FETCH COMMENTS ----------
   const {
     data: comments = [],
-    isLoading: commentsLoading,
+    isPending: commentsLoading,
   } = useQuery({
     queryKey: ["comments", id],
     queryFn: () => fetchComments(id!),
     enabled: !!id,
   });
 
-  // Local state
+  // ---------- LOCAL STATE ----------
   const [newComment, setNewComment] = useState("");
   const [replyTo, setReplyTo] = useState<string | null>(null);
   const [replyText, setReplyText] = useState("");
 
+  // ---------- CREATE COMMENT ----------
   const createMutation = useMutation({
-    mutationFn: (payload: { post_id: string; content: string; parent_id?: string | null }) =>
-      createComment(payload.post_id, payload.content, accessToken!, payload.parent_id),
+    mutationFn: (payload: {
+      post_id: string;
+      content: string;
+      parent_id?: string | null;
+    }) => createComment(payload.post_id, payload.content, accessToken!, payload.parent_id),
+
     onSuccess: () => {
       setNewComment("");
       setReplyText("");
@@ -59,6 +65,7 @@ export default function BlogDetails() {
     },
   });
 
+  // ---------- DELETE COMMENT ----------
   const deleteMutation = useMutation({
     mutationFn: (commentId: string) => deleteComment(commentId, accessToken!),
     onSuccess: () => {
@@ -66,25 +73,9 @@ export default function BlogDetails() {
     },
   });
 
-  if (isLoading)
-    return (
-      <div className="min-h-screen flex justify-center items-center">
-        <p>Loading blog...</p>
-      </div>
-    );
-
-  if (error || !post)
-    return (
-      <div className="min-h-screen flex justify-center items-center">
-        <p>Blog not found.</p>
-      </div>
-    );
-
-  const isOwner = user?.id === post.user_id;
-
+  // ---------- DELETE POST ----------
   const handleDelete = async () => {
     if (!accessToken) return;
-
     const yes = confirm("Delete this blog?");
     if (!yes) return;
 
@@ -93,15 +84,18 @@ export default function BlogDetails() {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
 
-    if (!res.ok) {
-      alert("Failed to delete");
-      return;
-    }
-
-    navigate("/blogs");
+    if (res.ok) navigate("/blogs");
   };
 
-  // Build nested tree
+  if (postLoading)
+    return <div className="min-h-screen flex justify-center items-center">Loading…</div>;
+
+  if (postError || !post)
+    return <div className="min-h-screen flex justify-center items-center">Blog not found.</div>;
+
+  const isOwner = user?.id === post.user_id;
+
+  // ---------- BUILD THREAD TREE ----------
   const buildTree = (arr: any[]) => {
     const map = new Map();
     arr.forEach((c) => map.set(c.id, { ...c, replies: [] }));
@@ -120,15 +114,20 @@ export default function BlogDetails() {
 
   return (
     <div className="max-w-3xl mx-auto py-10 px-4 space-y-6">
+
+      {/* IMAGE */}
       <img src={post.cover_image_url} className="w-full h-72 object-cover rounded-xl shadow" />
 
+      {/* TITLE */}
       <h1 className="text-3xl font-bold">{post.title}</h1>
 
+      {/* AUTHOR */}
       <div className="flex items-center gap-3">
         <img src={post.profiles?.avatar_url} className="w-10 h-10 rounded-full" />
         <span>{post.profiles?.full_name}</span>
       </div>
 
+      {/* UPVOTE + DELETE */}
       <div className="flex gap-4 pt-4">
         <Button
           variant="outline"
@@ -147,30 +146,35 @@ export default function BlogDetails() {
         )}
       </div>
 
+      {/* CONTENT */}
       <p className="whitespace-pre-line">{post.content}</p>
 
       {/* COMMENTS */}
       <hr className="my-6" />
       <h2 className="text-xl font-bold">Comments</h2>
 
+      {/* ADD COMMENT */}
       <div className="border p-4 rounded-lg">
         {!session ? (
           <p>
-            Sign in to comment.{" "}
-            <button className="underline" onClick={() => navigate("/profile")}>
-              Sign in
-            </button>
+            You must{" "}
+            <span className="underline cursor-pointer" onClick={() => navigate("/profile")}>
+              sign in
+            </span>{" "}
+            to comment.
           </p>
         ) : (
           <>
             <Textarea
-              placeholder="Write a comment..."
-              value={newComment}
-              onChange={(e) => setNewComment(e.target.value)}
               rows={3}
+              value={newComment}
+              placeholder="Write a comment..."
+              onChange={(e) => setNewComment(e.target.value)}
             />
+
             <div className="flex justify-end mt-2">
               <Button
+                disabled={createMutation.isPending}
                 onClick={() =>
                   createMutation.mutate({
                     post_id: id!,
@@ -178,14 +182,14 @@ export default function BlogDetails() {
                   })
                 }
               >
-                Post Comment
+                {createMutation.isPending ? "Posting…" : "Post Comment"}
               </Button>
             </div>
           </>
         )}
       </div>
 
-      {/* Comments */}
+      {/* RENDER COMMENTS */}
       <div className="space-y-3">
         {commentsLoading ? (
           <p>Loading comments...</p>
@@ -217,7 +221,6 @@ export default function BlogDetails() {
   );
 }
 
-// Recursive Comment UI
 function CommentItem({
   comment,
   session,
@@ -237,10 +240,12 @@ function CommentItem({
     <div className="border p-4 rounded-lg bg-white">
       <div className="flex gap-3">
         <img src={avatar} className="w-10 h-10 rounded-full" />
+
         <div className="flex-1">
           <p className="font-semibold">{author}</p>
-          <p className="text-gray-700">{comment.content}</p>
+          <p className="text-gray-700 whitespace-pre-wrap">{comment.content}</p>
 
+          {/* Reply / Delete */}
           <button className="underline text-xs" onClick={() => onReply(comment.id)}>
             Reply
           </button>
@@ -254,6 +259,7 @@ function CommentItem({
             </button>
           )}
 
+          {/* Reply Box */}
           {replyTo === comment.id && (
             <div className="mt-3">
               <Textarea
@@ -267,6 +273,7 @@ function CommentItem({
             </div>
           )}
 
+          {/* Replies */}
           {comment.replies.length > 0 && (
             <div className="mt-3 pl-6 border-l space-y-2">
               {comment.replies.map((r: any) => (
@@ -278,9 +285,7 @@ function CommentItem({
                   replyText={replyText}
                   setReplyText={setReplyText}
                   onReply={onReply}
-                  onAddReply={() =>
-                    createComment(r.post_id, replyText.trim(), session.access_token, r.id)
-                  }
+                  onAddReply={onAddReply}
                   onDelete={onDelete}
                 />
               ))}

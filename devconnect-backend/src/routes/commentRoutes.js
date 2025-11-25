@@ -1,4 +1,4 @@
-// src/routes/commentRoutes.js
+// devconnect-backend/src/routes/commentRoutes.js
 import express from 'express';
 import { requireAuth } from '../middleware/authMiddleware.js';
 import { supabaseAdmin } from '../config/supabaseClient.js';
@@ -7,17 +7,16 @@ const router = express.Router();
 
 /**
  * GET /api/comments?post_id=<id>
- * Returns all comments (flat array) for a post, with user profile (full_name, avatar_url).
+ * Return all comments for a post (flat array), including author profile info.
  */
 router.get('/', async (req, res) => {
   try {
-    const { post_id } = req.query;
+    const post_id = req.query.post_id;
     if (!post_id) return res.status(400).json({ error: 'post_id is required' });
 
-    // fetch comments, include profile info
     const { data, error } = await supabaseAdmin
       .from('post_comments')
-      .select('id, post_id, parent_id, content, created_at, updated_at, user_id, profiles (full_name, avatar_url)')
+      .select('id, post_id, parent_id, content, created_at, updated_at, user_id, profiles (id, full_name, avatar_url)')
       .eq('post_id', post_id)
       .order('created_at', { ascending: true });
 
@@ -35,8 +34,8 @@ router.get('/', async (req, res) => {
 
 /**
  * POST /api/comments
- * Body: { post_id, content, parent_id (optional) }
- * Requires auth. Create a comment or reply.
+ * Body: { post_id, content, parent_id? }
+ * Requires auth
  */
 router.post('/', requireAuth, async (req, res) => {
   try {
@@ -49,13 +48,14 @@ router.post('/', requireAuth, async (req, res) => {
       post_id,
       user_id: userId,
       content,
-      parent_id
+      parent_id,
     };
 
     const { data, error } = await supabaseAdmin
       .from('post_comments')
       .insert(insertPayload)
-      .select('id, post_id, parent_id, content, created_at, updated_at, user_id, profiles (full_name, avatar_url)')
+      // return inserted row plus joined profile
+      .select('id, post_id, parent_id, content, created_at, updated_at, user_id, profiles (id, full_name, avatar_url)')
       .single();
 
     if (error) {
@@ -72,14 +72,14 @@ router.post('/', requireAuth, async (req, res) => {
 
 /**
  * DELETE /api/comments/:id
- * Only comment owner (user_id) can delete their comment.
+ * Only owner can delete their comment
  */
 router.delete('/:id', requireAuth, async (req, res) => {
   try {
     const userId = req.user.id;
-    const { id } = req.params;
+    const id = req.params.id;
 
-    // check owner
+    // fetch comment owner
     const { data: existing, error: fetchErr } = await supabaseAdmin
       .from('post_comments')
       .select('user_id')
