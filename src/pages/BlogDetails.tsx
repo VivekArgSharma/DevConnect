@@ -1,7 +1,6 @@
 // src/pages/BlogDetails.tsx
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation } from "@tanstack/react-query";
-
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/AuthContext";
@@ -10,6 +9,7 @@ import { upvotePost } from "@/lib/upvote";
 import { fetchComments, createComment, deleteComment } from "@/lib/comments";
 
 import { useMemo, useState } from "react";
+import DeletePostButton from "@/components/DeletePostButton";
 
 const API_URL = import.meta.env.VITE_API_URL as string;
 
@@ -32,14 +32,24 @@ export default function BlogDetails() {
   });
 
   // comments
-  const { data: commentsRaw = [], refetch: refetchComments, isFetching: commentsLoading } = useQuery({
+  const {
+    data: commentsRaw = [],
+    refetch: refetchComments,
+    isFetching: commentsLoading,
+  } = useQuery({
     queryKey: ["comments", id],
     queryFn: async () => fetchComments(id!),
     enabled: !!id,
   });
 
   const createTop = useMutation({
-    mutationFn: async ({ post_id, content }: { post_id: string; content: string }) => {
+    mutationFn: async ({
+      post_id,
+      content,
+    }: {
+      post_id: string;
+      content: string;
+    }) => {
       if (!accessToken) throw new Error("Not authenticated");
       return createComment(post_id, content, accessToken, API_URL);
     },
@@ -50,7 +60,15 @@ export default function BlogDetails() {
   });
 
   const createReply = useMutation({
-    mutationFn: async ({ post_id, content, parent_id }: { post_id: string; content: string; parent_id?: string }) => {
+    mutationFn: async ({
+      post_id,
+      content,
+      parent_id,
+    }: {
+      post_id: string;
+      content: string;
+      parent_id?: string;
+    }) => {
       if (!accessToken) throw new Error("Not authenticated");
       return createComment(post_id, content, accessToken, API_URL, parent_id);
     },
@@ -67,8 +85,10 @@ export default function BlogDetails() {
     onSuccess: () => refetchComments(),
   });
 
-  // build tree (roots with children arrays)
-  const commentTree = useMemo(() => buildCommentTree(commentsRaw || []), [commentsRaw]);
+  // build tree
+  const commentTree = useMemo(() => buildCommentTree(commentsRaw || []), [
+    commentsRaw,
+  ]);
 
   if (!post) return <div>Loading post...</div>;
 
@@ -84,11 +104,18 @@ export default function BlogDetails() {
 
       <div className="flex items-center gap-3 mt-4">
         <img
-          src={(post.profiles && post.profiles.avatar_url) || post.avatar_url || "/default-avatar.png"}
+          src={
+            (post.profiles && post.profiles.avatar_url) ||
+            post.avatar_url ||
+            "/default-avatar.png"
+          }
           className="w-10 h-10 rounded-full cursor-pointer"
           onClick={() => goToUser(post.user_id)}
         />
-        <span className="cursor-pointer text-blue-600" onClick={() => goToUser(post.user_id)}>
+        <span
+          className="cursor-pointer text-blue-600"
+          onClick={() => goToUser(post.user_id)}
+        >
           {post.profiles?.full_name ?? post.full_name ?? "Unknown"}
         </span>
       </div>
@@ -122,7 +149,14 @@ export default function BlogDetails() {
                 placeholder="Write a comment..."
               />
               <div className="mt-2">
-                <Button onClick={() => createTop.mutate({ post_id: post.id, content: newCommentText })}>
+                <Button
+                  onClick={() =>
+                    createTop.mutate({
+                      post_id: post.id,
+                      content: newCommentText,
+                    })
+                  }
+                >
                   Post
                 </Button>
               </div>
@@ -143,34 +177,44 @@ export default function BlogDetails() {
                 depth={0}
                 goToUser={goToUser}
                 currentUserId={user?.id}
-                onReplySubmit={(parentId, text) => createReply.mutate({ post_id: post.id, content: text, parent_id: parentId })}
+                onReplySubmit={(parentId, text) =>
+                  createReply.mutate({
+                    post_id: post.id,
+                    content: text,
+                    parent_id: parentId,
+                  })
+                }
                 onDelete={(cid) => delMut.mutate(cid)}
               />
             ))}
           </div>
         )}
+
+        {/* DELETE BUTTON AT BOTTOM */}
+        <div className="mt-10 pb-10">
+          <DeletePostButton postId={post.id} ownerId={post.user_id} />
+        </div>
       </div>
     </div>
   );
 }
 
 /* ---------------------------
-   Helpers: build tree
-   --------------------------- */
+   Helpers
+--------------------------- */
 function buildCommentTree(flat: any[]) {
   const map = new Map<string, any>();
   for (const r of flat) {
     map.set(r.id, { ...r, children: [] });
   }
   const roots: any[] = [];
-  // keep original order so replies appear in chronological order under their parents
   for (const r of flat) {
     const node = map.get(r.id);
     if (!node) continue;
     if (node.parent_id) {
       const parent = map.get(node.parent_id);
       if (parent) parent.children.push(node);
-      else roots.push(node); // orphan reply -> treat as root
+      else roots.push(node);
     } else {
       roots.push(node);
     }
@@ -179,12 +223,8 @@ function buildCommentTree(flat: any[]) {
 }
 
 /* ---------------------------
-   CommentNode - recursive
-   Visual rules:
-   - parent comment: card with border
-   - replies: lighter background, smaller padding, slightly indented (margin-left)
-   - replies nested inside parent element (no separate big card list)
-   --------------------------- */
+   CommentNode (unchanged)
+--------------------------- */
 function CommentNode({
   node,
   depth,
@@ -197,14 +237,20 @@ function CommentNode({
   const [replyText, setReplyText] = useState("");
 
   const author = node.profiles?.full_name ?? node.full_name ?? "Unknown";
-  const avatar = node.profiles?.avatar_url ?? `https://ui-avatars.com/api/?name=${encodeURIComponent(author)}`;
+  const avatar =
+    node.profiles?.avatar_url ||
+    `https://ui-avatars.com/api/?name=${encodeURIComponent(author)}`;
 
   const isRoot = depth === 0;
 
   return (
     <div>
-      {/* Parent or root comment card */}
-      <div className={`p-3 rounded ${isRoot ? "bg-white border" : "bg-gray-50"}`} style={{ marginLeft: depth * 18 }}>
+      <div
+        className={`p-3 rounded ${
+          isRoot ? "bg-white border" : "bg-gray-50"
+        }`}
+        style={{ marginLeft: depth * 18 }}
+      >
         <div className="flex gap-3">
           <img
             src={avatar}
@@ -215,14 +261,22 @@ function CommentNode({
           <div className="flex-1">
             <div className="flex items-center justify-between">
               <div>
-                <p className="font-semibold cursor-pointer text-blue-600" onClick={() => goToUser(node.user_id)}>
+                <p
+                  className="font-semibold cursor-pointer text-blue-600"
+                  onClick={() => goToUser(node.user_id)}
+                >
                   {author}
                 </p>
-                <p className="text-xs text-gray-500">{new Date(node.created_at).toLocaleString()}</p>
+                <p className="text-xs text-gray-500">
+                  {new Date(node.created_at).toLocaleString()}
+                </p>
               </div>
 
               {currentUserId === node.user_id && (
-                <button className="text-red-500 text-xs underline" onClick={() => onDelete(node.id)}>
+                <button
+                  className="text-red-500 text-xs underline"
+                  onClick={() => onDelete(node.id)}
+                >
                   Delete
                 </button>
               )}
@@ -231,14 +285,21 @@ function CommentNode({
             <p className="mt-2 whitespace-pre-wrap">{node.content}</p>
 
             <div className="mt-2 flex items-center gap-3">
-              <button className="text-sm text-gray-600 underline" onClick={() => setShowReply((s) => !s)}>
+              <button
+                className="text-sm text-gray-600 underline"
+                onClick={() => setShowReply((s) => !s)}
+              >
                 Reply
               </button>
             </div>
 
             {showReply && (
               <div className="mt-2">
-                <Textarea value={replyText} onChange={(e) => setReplyText(e.target.value)} placeholder="Write a reply..." />
+                <Textarea
+                  value={replyText}
+                  onChange={(e) => setReplyText(e.target.value)}
+                  placeholder="Write a reply..."
+                />
                 <div className="mt-2 flex gap-2">
                   <Button
                     onClick={() => {
@@ -250,7 +311,13 @@ function CommentNode({
                   >
                     Reply
                   </Button>
-                  <Button variant="ghost" onClick={() => { setShowReply(false); setReplyText(""); }}>
+                  <Button
+                    variant="ghost"
+                    onClick={() => {
+                      setShowReply(false);
+                      setReplyText("");
+                    }}
+                  >
                     Cancel
                   </Button>
                 </div>
@@ -260,7 +327,6 @@ function CommentNode({
         </div>
       </div>
 
-      {/* Children: render directly below parent, indented slightly more */}
       {node.children && node.children.length > 0 && (
         <div className="mt-2 space-y-2">
           {node.children.map((child: any) => (
