@@ -1,120 +1,96 @@
-import { useAuth } from "@/contexts/AuthContext";
-import { useQuery } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
-import { ProjectCard } from "@/components/ui/project-card";
-import { upvotePost } from "@/lib/upvote";
+import { useEffect, useState } from "react";
+import { useAuth } from "../contexts/AuthContext";
+import { supabase } from "../lib/supabaseClient";
+import { Button } from "../components/ui/button";
 import { useNavigate } from "react-router-dom";
 
-const API_URL = import.meta.env.VITE_API_URL;
-
 export default function Profile() {
-  const { user, accessToken, signInWithGoogle, signOut } = useAuth();
+  const { user, signInWithGoogle, signOut } = useAuth();
   const navigate = useNavigate();
+  const [profile, setProfile] = useState<any>(null);
 
-  // If user is NOT logged in → show login page
+  useEffect(() => {
+    async function loadProfile() {
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", user.id)
+        .single();
+
+      if (error) {
+        console.log("Profile fetch error:", error.message);
+      } else {
+        setProfile(data);
+      }
+    }
+
+    loadProfile();
+  }, [user]);
+
   if (!user) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center text-center px-6">
-        <h1 className="text-3xl font-bold mb-4">You are not signed in</h1>
-        <p className="text-gray-600 mb-6">
-          Please sign in to view your profile and your posts.
-        </p>
-
-        <Button size="lg" onClick={signInWithGoogle}>
-          Sign in with Google
-        </Button>
+      <div className="text-center py-10">
+        <h2 className="text-xl font-semibold">You are not signed in</h2>
+        <Button onClick={signInWithGoogle}>Sign in</Button>
       </div>
     );
   }
 
-  // Fetch posts only IF user is logged in
-  const {
-    data: myPosts = [],
-    refetch,
-    isLoading,
-  } = useQuery({
-    queryKey: ["my-posts"],
-    queryFn: async () => {
-      const res = await fetch(`${API_URL}/api/posts/mine`, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
-
-      return res.json();
-    },
-    enabled: !!accessToken,
-  });
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex justify-center items-center">
-        <p className="text-gray-500">Loading your posts...</p>
-      </div>
-    );
+  if (!profile) {
+    return <p className="text-center mt-10">Loading profile...</p>;
   }
 
   return (
-    <div className="max-w-6xl mx-auto py-10 px-4 space-y-10">
-      {/* USER INFO + SIGNOUT */}
+    <div className="max-w-3xl mx-auto py-10">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <img
-            src={user.user_metadata?.avatar_url}
-            alt="avatar"
+            src={profile.avatar_url}
             className="w-20 h-20 rounded-full border"
           />
           <div>
-            <h1 className="text-3xl font-bold">
-              {user.user_metadata?.full_name || "Your Profile"}
-            </h1>
-            <p className="text-gray-500">{user.email}</p>
+            <h1 className="text-3xl font-bold">{profile.full_name}</h1>
+            <p className="text-gray-500">@{profile.username}</p>
           </div>
         </div>
 
-        <Button variant="destructive" onClick={async () => {
-          await signOut();
-          navigate("/");
-        }}>
-          Sign Out
-        </Button>
+        <div className="flex gap-3">
+          <Button onClick={() => navigate("/edit-profile")}>Edit Profile</Button>
+
+          <Button
+            onClick={async () => {
+              await signOut();
+              navigate("/");
+            }}
+            variant="destructive"
+          >
+            Sign Out
+          </Button>
+        </div>
       </div>
 
-      <hr className="my-6" />
+      <div className="mt-6">
+        <h2 className="text-lg font-semibold">Bio</h2>
+        <p className="text-gray-700">{profile.bio}</p>
+      </div>
 
-      {/* POSTS */}
-      <h2 className="text-2xl font-bold mb-6">Your Posts</h2>
+      <div className="mt-6">
+        <h2 className="text-lg font-semibold">Skills</h2>
+        <p className="text-gray-700">{profile.skills?.join(", ")}</p>
+      </div>
 
-      {myPosts.length === 0 ? (
-        <p className="text-gray-500">You have posted nothing yet.</p>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-          {myPosts.map((post) => (
-            <ProjectCard
-              key={post.id}
-              image={post.cover_image_url}
-              title={post.title}
-              author={post.profiles?.full_name}
-              techStack={
-                post.tags?.join(", ") || (post.type === "project" ? "Project" : "Blog")
-              }
-              description={post.short_description}
-              likes_count={post.likes_count}
-              onClick={() =>
-                navigate(
-                  post.type === "project"
-                    ? `/projects/${post.id}`
-                    : `/blogs/${post.id}`
-                )
-              }
-              onUpvote={async () => {
-                await upvotePost(post.id, accessToken, API_URL);
-                refetch();
-              }}
-            />
-          ))}
-        </div>
-      )}
+      <div className="mt-6">
+        <h2 className="text-lg font-semibold">Website</h2>
+        <a
+          href={profile.website}
+          target="_blank"
+          className="text-blue-600 underline"
+        >
+          {profile.website}
+        </a>
+      </div>
     </div>
   );
 }

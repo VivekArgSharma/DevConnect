@@ -1,11 +1,8 @@
 // src/pages/EditProfile.tsx
-import { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import {supabase} from "@/lib/supabaseClient";
-import { useAuth } from "@/contexts/AuthContext";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { supabase } from "../lib/supabaseClient";
+import { Button } from "../components/ui/button";
 
 type ProfileRow = {
   id: string;
@@ -15,215 +12,255 @@ type ProfileRow = {
   bio?: string | null;
   website?: string | null;
   skills?: string[] | null;
+  created_at?: string | null;
+  updated_at?: string | null;
 };
 
 export default function EditProfile() {
-  const { user, accessToken } = useAuth();
   const navigate = useNavigate();
-  const fileRef = useRef<HTMLInputElement | null>(null);
 
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
 
-  // form state
+  const [profile, setProfile] = useState<ProfileRow | null>(null);
+
   const [fullName, setFullName] = useState("");
   const [username, setUsername] = useState("");
   const [bio, setBio] = useState("");
   const [website, setWebsite] = useState("");
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-  const [skills, setSkills] = useState<string[]>([]);
-  const [tagInput, setTagInput] = useState("");
+  const [skillsText, setSkillsText] = useState("");
 
   useEffect(() => {
+    (async () => {
+      setLoading(true);
+
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        console.log("Not signed in.");
+        navigate("/");
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", user.id)
+        .single();
+
+      if (error) {
+        console.log("Profile not found, will create new one:", error.message);
+        setLoading(false);
+        return;
+      }
+
+      setProfile(data);
+      setFullName(data.full_name ?? "");
+      setUsername(data.username ?? "");
+      setBio(data.bio ?? "");
+      setWebsite(data.website ?? "");
+      setSkillsText((data.skills && data.skills.join(", ")) ?? "");
+      setAvatarPreview(data.avatar_url ?? null);
+      setLoading(false);
+    })();
+  }, [navigate]);
+
+  // preview image
+  useEffect(() => {
+    if (!avatarFile) return;
+    const url = URL.createObjectURL(avatarFile);
+    setAvatarPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [avatarFile]);
+
+  // avatar upload handler
+  async function uploadAvatar(userId: string) {
+    if (!avatarFile) return null;
+
+    const filename = `avatar-${userId}-${Date.now()}-${avatarFile.name}`;
+
+    const { data, error } = await supabase.storage
+      .from("avatars")
+      .upload(filename, avatarFile);
+
+    if (error) {
+      console.log("Avatar upload error:", error);
+      throw error;
+    }
+
+    const { data: publicURL } = supabase.storage
+  .from("avatars")
+  .getPublicUrl(data.path);
+
+if (!publicURL) {
+  console.log("Failed to get public URL");
+  return null;
+}
+
+return publicURL.publicUrl;
+
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
     if (!user) {
-      navigate("/profile"); // redirect if not logged in
+      console.log("Not signed in.");
+      setLoading(false);
       return;
     }
-    const load = async () => {
-      try {
-        const { data } = await supabase
-          .from("profiles")
-          .select("*")
-          .eq("id", user.id)
-          .single();
-
-        const row = data as ProfileRow | null;
-        if (row) {
-          setFullName(row.full_name ?? "");
-          setUsername(row.username ?? "");
-          setBio(row.bio ?? "");
-          setWebsite(row.website ?? "");
-          setAvatarUrl(row.avatar_url ?? null);
-          setSkills(row.skills ?? []);
-        }
-      } catch (err) {
-        console.error("Failed to load profile", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
-  }, [user, navigate]);
-
-  // add tag when pressing Enter or comma
-  const addTag = (value?: string) => {
-    const v = (value ?? tagInput).trim();
-    if (!v) return;
-    if (!skills.includes(v)) {
-      setSkills((s) => [...s, v]);
-    }
-    setTagInput("");
-  };
-
-  const removeTag = (t: string) => {
-    setSkills((s) => s.filter((x) => x !== t));
-  };
-
-  const onFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !user) return;
-
-    const bucket = "avatars";
-    const filePath = `${user.id}/${Date.now()}_${file.name}`;
 
     try {
-      setSaving(true);
-      // upload
-      const up = await supabase.storage.from(bucket).upload(filePath, file, {
-        upsert: true,
-      });
+      let avatar_url = profile?.avatar_url ?? null;
 
-      // check error shape
-      // @ts-ignore
-      if (up.error) throw up.error;
-
-      // get public url
-      const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(filePath);
-      const publicUrl = (urlData as any)?.publicUrl ?? null;
-
-      if (publicUrl) {
-        setAvatarUrl(publicUrl);
+      if (avatarFile) {
+        avatar_url = await uploadAvatar(user.id);
       }
-    } catch (err) {
-      console.error("Upload failed", err);
-      alert("Failed to upload avatar. See console.");
-    } finally {
-      setSaving(false);
-      // clear input so same file can be reselected later
-      if (fileRef.current) fileRef.current.value = "";
-    }
-  };
 
-  const onSave = async () => {
-    if (!user) return;
-    setSaving(true);
-    try {
-      const payload: Partial<ProfileRow> = {
+      const skills = skillsText
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+
+      const updates = {
+        id: user.id,
         full_name: fullName || null,
         username: username || null,
+        avatar_url,
         bio: bio || null,
         website: website || null,
-        avatar_url: avatarUrl || null,
-        skills: skills.length ? skills : [],
+        skills,
+        updated_at: new Date().toISOString(),
       };
 
-      // update profile row
-      const { error } = await supabase.from("profiles").update(payload).eq("id", user.id);
+      // First try updating
+      const { error: updateErr } = await supabase
+        .from("profiles")
+        .update(updates)
+        .eq("id", user.id);
 
-      if (error) throw error;
+      if (updateErr) {
+        console.log("Update error:", updateErr);
+
+        // if row does not exist → insert new one
+        const { error: insertErr } = await supabase
+          .from("profiles")
+          .insert(updates);
+
+        if (insertErr) {
+          console.log("Insert error:", insertErr);
+          throw insertErr;
+        }
+      }
+
+      console.log("Profile saved.");
       navigate("/profile");
     } catch (err) {
-      console.error("Failed to save profile", err);
-      alert("Failed to save profile. See console.");
+      console.log("Save failed:", err);
     } finally {
-      setSaving(false);
+      setLoading(false);
     }
-  };
-
-  if (loading) return <div className="p-6">Loading...</div>;
+  }
 
   return (
-    <div className="max-w-3xl mx-auto p-6">
-      <h2 className="text-2xl font-semibold mb-4">Edit Profile</h2>
+    <div className="max-w-3xl mx-auto py-12 px-4">
+      <h1 className="text-2xl font-semibold mb-6">Edit Profile</h1>
 
-      <div className="grid grid-cols-1 gap-4">
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Avatar */}
         <div>
-          <label className="block text-sm font-medium mb-1">Avatar</label>
+          <label className="block text-sm font-medium mb-2">Avatar</label>
           <div className="flex items-center gap-4">
-            <img
-              src={avatarUrl || "/default-avatar.png"}
-              alt="avatar"
-              className="w-20 h-20 rounded-full object-cover border"
-            />
-            <div>
-              <input ref={fileRef} type="file" accept="image/*" onChange={onFileChange} />
+            <div className="w-24 h-24 rounded-full overflow-hidden border bg-gray-200">
+              {avatarPreview ? (
+                <img
+                  src={avatarPreview}
+                  className="w-full h-full object-cover"
+                  alt="avatar"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-gray-500">
+                  No Image
+                </div>
+              )}
             </div>
-          </div>
-        </div>
 
-        <div>
-          <label className="block text-sm font-medium mb-1">Full name</label>
-          <Input value={fullName} onChange={(e) => setFullName(e.target.value)} />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium mb-1">Username</label>
-          <Input value={username} onChange={(e) => setUsername(e.target.value)} />
-          <p className="text-xs text-gray-500 mt-1">Unique handle (optional)</p>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium mb-1">Website</label>
-          <Input value={website} onChange={(e) => setWebsite(e.target.value)} />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium mb-1">Bio</label>
-          <Textarea value={bio} onChange={(e) => setBio(e.target.value)} rows={5} />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium mb-1">Skills / Tags</label>
-          <div className="flex gap-2 mb-2">
             <input
-              value={tagInput}
-              onChange={(e) => setTagInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === ",") {
-                  e.preventDefault();
-                  addTag();
-                }
-              }}
-              placeholder="Type a skill and press Enter"
-              className="border rounded px-2 py-1 flex-1"
+              type="file"
+              accept="image/*"
+              onChange={(e) => setAvatarFile(e.target.files?.[0] ?? null)}
             />
-            <Button onClick={() => addTag()}>Add</Button>
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-            {skills.map((t) => (
-              <div
-                key={t}
-                className="bg-gray-100 px-3 py-1 rounded-full flex items-center gap-2"
-              >
-                <span className="text-sm">{t}</span>
-                <button className="text-xs text-red-500" onClick={() => removeTag(t)}>
-                  ×
-                </button>
-              </div>
-            ))}
           </div>
         </div>
 
-        <div className="flex gap-3 mt-4">
-          <Button onClick={onSave} disabled={saving}>
-            {saving ? "Saving..." : "Save"}
+        <div>
+          <label className="block mb-1">Full Name</label>
+          <input
+            className="w-full border rounded px-3 py-2"
+            value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
+          />
+        </div>
+
+        <div>
+          <label className="block mb-1">Username</label>
+          <input
+            className="w-full border rounded px-3 py-2"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+          />
+        </div>
+
+        <div>
+          <label className="block mb-1">Bio</label>
+          <textarea
+            className="w-full border rounded px-3 py-2"
+            rows={3}
+            value={bio}
+            onChange={(e) => setBio(e.target.value)}
+          />
+        </div>
+
+        <div>
+          <label className="block mb-1">Website</label>
+          <input
+            className="w-full border rounded px-3 py-2"
+            value={website}
+            onChange={(e) => setWebsite(e.target.value)}
+          />
+        </div>
+
+        <div>
+          <label className="block mb-1">Skills (comma separated)</label>
+          <input
+            className="w-full border rounded px-3 py-2"
+            value={skillsText}
+            onChange={(e) => setSkillsText(e.target.value)}
+          />
+        </div>
+
+        <div className="flex gap-3">
+          <Button disabled={loading} type="submit">
+            {loading ? "Saving..." : "Save Profile"}
           </Button>
-          <Button variant="ghost" onClick={() => navigate("/profile")}>
+
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => navigate("/profile")}
+          >
             Cancel
           </Button>
         </div>
-      </div>
+      </form>
     </div>
   );
 }
