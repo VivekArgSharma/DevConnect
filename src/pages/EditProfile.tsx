@@ -1,4 +1,3 @@
-// src/pages/EditProfile.tsx
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
@@ -12,8 +11,6 @@ type ProfileRow = {
   bio?: string | null;
   website?: string | null;
   skills?: string[] | null;
-  created_at?: string | null;
-  updated_at?: string | null;
 };
 
 export default function EditProfile() {
@@ -29,18 +26,19 @@ export default function EditProfile() {
   const [username, setUsername] = useState("");
   const [bio, setBio] = useState("");
   const [website, setWebsite] = useState("");
-  const [skillsText, setSkillsText] = useState("");
+
+  // --- TAG SKILLS ---
+  const [skills, setSkills] = useState<string[]>([]);
+  const [skillInput, setSkillInput] = useState("");
 
   useEffect(() => {
     (async () => {
       setLoading(true);
 
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const { data: auth } = await supabase.auth.getUser();
+      const user = auth?.user;
 
       if (!user) {
-        console.log("Not signed in.");
         navigate("/");
         return;
       }
@@ -51,24 +49,21 @@ export default function EditProfile() {
         .eq("id", user.id)
         .single();
 
-      if (error) {
-        console.log("Profile not found, will create new one:", error.message);
-        setLoading(false);
-        return;
+      if (!error && data) {
+        setProfile(data);
+        setFullName(data.full_name || "");
+        setUsername(data.username || "");
+        setBio(data.bio || "");
+        setWebsite(data.website || "");
+        setSkills(data.skills || []);
+        setAvatarPreview(data.avatar_url || null);
       }
 
-      setProfile(data);
-      setFullName(data.full_name ?? "");
-      setUsername(data.username ?? "");
-      setBio(data.bio ?? "");
-      setWebsite(data.website ?? "");
-      setSkillsText((data.skills && data.skills.join(", ")) ?? "");
-      setAvatarPreview(data.avatar_url ?? null);
       setLoading(false);
     })();
   }, [navigate]);
 
-  // preview image
+  // Preview avatar
   useEffect(() => {
     if (!avatarFile) return;
     const url = URL.createObjectURL(avatarFile);
@@ -76,98 +71,75 @@ export default function EditProfile() {
     return () => URL.revokeObjectURL(url);
   }, [avatarFile]);
 
-  // avatar upload handler
+  // Upload avatar to Supabase Storage
   async function uploadAvatar(userId: string) {
-    if (!avatarFile) return null;
+    if (!avatarFile) return profile?.avatar_url || null;
 
-    const filename = `avatar-${userId}-${Date.now()}-${avatarFile.name}`;
+    const filename = `avatar-${userId}-${Date.now()}`;
 
     const { data, error } = await supabase.storage
       .from("avatars")
       .upload(filename, avatarFile);
 
-    if (error) {
-      console.log("Avatar upload error:", error);
-      throw error;
-    }
+    if (error) throw error;
 
     const { data: publicURL } = supabase.storage
-  .from("avatars")
-  .getPublicUrl(data.path);
+      .from("avatars")
+      .getPublicUrl(data.path);
 
-if (!publicURL) {
-  console.log("Failed to get public URL");
-  return null;
-}
-
-return publicURL.publicUrl;
-
+    return publicURL.publicUrl;
   }
+
+  // Add skill when pressing Enter
+  const handleSkillKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" && skillInput.trim() !== "") {
+      e.preventDefault();
+      if (!skills.includes(skillInput.trim())) {
+        setSkills([...skills, skillInput.trim()]);
+      }
+      setSkillInput("");
+    }
+  };
+
+  const removeSkill = (s: string) => {
+    setSkills(skills.filter((x) => x !== s));
+  };
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const { data: auth } = await supabase.auth.getUser();
+    const user = auth?.user;
 
-    if (!user) {
-      console.log("Not signed in.");
-      setLoading(false);
-      return;
-    }
+    if (!user) return;
 
     try {
-      let avatar_url = profile?.avatar_url ?? null;
-
-      if (avatarFile) {
-        avatar_url = await uploadAvatar(user.id);
-      }
-
-      const skills = skillsText
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean);
+      let avatar_url = await uploadAvatar(user.id);
 
       const updates = {
         id: user.id,
-        full_name: fullName || null,
-        username: username || null,
+        full_name: fullName,
+        username: username,
+        bio: bio,
+        website: website,
+        skills: skills,
         avatar_url,
-        bio: bio || null,
-        website: website || null,
-        skills,
         updated_at: new Date().toISOString(),
       };
 
-      // First try updating
-      const { error: updateErr } = await supabase
+      const { error } = await supabase
         .from("profiles")
-        .update(updates)
-        .eq("id", user.id);
+        .upsert(updates, { onConflict: "id" });
 
-      if (updateErr) {
-        console.log("Update error:", updateErr);
+      if (error) throw error;
 
-        // if row does not exist → insert new one
-        const { error: insertErr } = await supabase
-          .from("profiles")
-          .insert(updates);
-
-        if (insertErr) {
-          console.log("Insert error:", insertErr);
-          throw insertErr;
-        }
-      }
-
-      console.log("Profile saved.");
       navigate("/profile");
     } catch (err) {
-      console.log("Save failed:", err);
-    } finally {
-      setLoading(false);
+      console.log("Save error:", err);
     }
+
+    setLoading(false);
   }
 
   return (
@@ -175,19 +147,16 @@ return publicURL.publicUrl;
       <h1 className="text-2xl font-semibold mb-6">Edit Profile</h1>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Avatar */}
+        {/* AVATAR */}
         <div>
-          <label className="block text-sm font-medium mb-2">Avatar</label>
+          <label className="block mb-2 font-medium">Avatar</label>
+
           <div className="flex items-center gap-4">
             <div className="w-24 h-24 rounded-full overflow-hidden border bg-gray-200">
               {avatarPreview ? (
-                <img
-                  src={avatarPreview}
-                  className="w-full h-full object-cover"
-                  alt="avatar"
-                />
+                <img src={avatarPreview} className="w-full h-full object-cover" />
               ) : (
-                <div className="w-full h-full flex items-center justify-center text-gray-500">
+                <div className="w-full h-full flex items-center justify-center text-gray-400">
                   No Image
                 </div>
               )}
@@ -196,11 +165,12 @@ return publicURL.publicUrl;
             <input
               type="file"
               accept="image/*"
-              onChange={(e) => setAvatarFile(e.target.files?.[0] ?? null)}
+              onChange={(e) => setAvatarFile(e.target.files?.[0] || null)}
             />
           </div>
         </div>
 
+        {/* FULL NAME */}
         <div>
           <label className="block mb-1">Full Name</label>
           <input
@@ -210,6 +180,7 @@ return publicURL.publicUrl;
           />
         </div>
 
+        {/* USERNAME */}
         <div>
           <label className="block mb-1">Username</label>
           <input
@@ -219,16 +190,18 @@ return publicURL.publicUrl;
           />
         </div>
 
+        {/* BIO */}
         <div>
           <label className="block mb-1">Bio</label>
           <textarea
             className="w-full border rounded px-3 py-2"
-            rows={3}
             value={bio}
+            rows={3}
             onChange={(e) => setBio(e.target.value)}
           />
         </div>
 
+        {/* WEBSITE */}
         <div>
           <label className="block mb-1">Website</label>
           <input
@@ -238,25 +211,43 @@ return publicURL.publicUrl;
           />
         </div>
 
+        {/* SKILLS - TAG INPUT */}
         <div>
-          <label className="block mb-1">Skills (comma separated)</label>
+          <label className="block mb-1">Skills</label>
+
+          <div className="flex flex-wrap gap-2 mb-2">
+            {skills.map((s) => (
+              <div
+                key={s}
+                className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full flex items-center gap-2"
+              >
+                {s}
+                <button
+                  type="button"
+                  onClick={() => removeSkill(s)}
+                  className="text-red-500 font-bold"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+
           <input
             className="w-full border rounded px-3 py-2"
-            value={skillsText}
-            onChange={(e) => setSkillsText(e.target.value)}
+            placeholder="Type skill and press Enter"
+            value={skillInput}
+            onChange={(e) => setSkillInput(e.target.value)}
+            onKeyDown={handleSkillKey}
           />
         </div>
 
         <div className="flex gap-3">
-          <Button disabled={loading} type="submit">
-            {loading ? "Saving..." : "Save Profile"}
+          <Button type="submit" disabled={loading}>
+            {loading ? "Saving..." : "Save"}
           </Button>
 
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() => navigate("/profile")}
-          >
+          <Button type="button" variant="secondary" onClick={() => navigate("/profile")}>
             Cancel
           </Button>
         </div>
