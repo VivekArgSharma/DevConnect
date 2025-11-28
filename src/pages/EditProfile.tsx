@@ -27,7 +27,7 @@ export default function EditProfile() {
   const [bio, setBio] = useState("");
   const [website, setWebsite] = useState("");
 
-  // --- TAG SKILLS ---
+  // SKILL TAGS
   const [skills, setSkills] = useState<string[]>([]);
   const [skillInput, setSkillInput] = useState("");
 
@@ -63,7 +63,7 @@ export default function EditProfile() {
     })();
   }, [navigate]);
 
-  // Preview avatar
+  // Preview avatar when selecting a file
   useEffect(() => {
     if (!avatarFile) return;
     const url = URL.createObjectURL(avatarFile);
@@ -71,18 +71,45 @@ export default function EditProfile() {
     return () => URL.revokeObjectURL(url);
   }, [avatarFile]);
 
-  // Upload avatar to Supabase Storage
-  async function uploadAvatar(userId: string) {
-    if (!avatarFile) return profile?.avatar_url || null;
+  /** Extract file path from public URL */
+  function extractFilePath(url: string | null): string | null {
+    if (!url) return null;
 
+    try {
+      const u = new URL(url);
+      const path = u.pathname;
+
+      const prefix = "/storage/v1/object/public/avatars/";
+      const idx = path.indexOf(prefix);
+
+      if (idx === -1) return null;
+
+      return path.substring(idx + prefix.length);
+    } catch {
+      return null;
+    }
+  }
+
+  /** Upload avatar + delete old one */
+  async function uploadAvatar(userId: string, oldAvatarUrl: string | null) {
+    if (!avatarFile) return oldAvatarUrl;
+
+    // 1. delete old avatar if exists
+    const oldFilePath = extractFilePath(oldAvatarUrl);
+    if (oldFilePath) {
+      await supabase.storage.from("avatars").remove([oldFilePath]);
+      console.log("Deleted old avatar:", oldFilePath);
+    }
+
+    // 2. upload new avatar
     const filename = `avatar-${userId}-${Date.now()}`;
-
     const { data, error } = await supabase.storage
       .from("avatars")
       .upload(filename, avatarFile);
 
     if (error) throw error;
 
+    // 3. get public URL
     const { data: publicURL } = supabase.storage
       .from("avatars")
       .getPublicUrl(data.path);
@@ -90,7 +117,7 @@ export default function EditProfile() {
     return publicURL.publicUrl;
   }
 
-  // Add skill when pressing Enter
+  // Add skill on ENTER
   const handleSkillKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && skillInput.trim() !== "") {
       e.preventDefault();
@@ -115,7 +142,8 @@ export default function EditProfile() {
     if (!user) return;
 
     try {
-      let avatar_url = await uploadAvatar(user.id);
+      // Upload avatar + delete old one
+      const avatar_url = await uploadAvatar(user.id, profile?.avatar_url ?? null);
 
       const updates = {
         id: user.id,
@@ -147,6 +175,7 @@ export default function EditProfile() {
       <h1 className="text-2xl font-semibold mb-6">Edit Profile</h1>
 
       <form onSubmit={handleSubmit} className="space-y-6">
+
         {/* AVATAR */}
         <div>
           <label className="block mb-2 font-medium">Avatar</label>
@@ -211,7 +240,7 @@ export default function EditProfile() {
           />
         </div>
 
-        {/* SKILLS - TAG INPUT */}
+        {/* SKILLS */}
         <div>
           <label className="block mb-1">Skills</label>
 
