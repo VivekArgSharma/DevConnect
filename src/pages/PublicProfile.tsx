@@ -2,6 +2,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { ProjectCard } from "@/components/ui/project-card";
+import FollowButton from "@/components/FollowButton";
 
 interface Profile {
   id: string;
@@ -14,18 +15,15 @@ interface Profile {
 }
 
 export default function PublicProfile() {
-  const { userId } = useParams<{ userId: string }>();
+  const { userId } = useParams();
   const navigate = useNavigate();
-
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [posts, setPosts] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [posts, setPosts] = useState<any[] | null>(null);
 
   useEffect(() => {
     if (!userId) return;
 
     const load = async () => {
-      // Load profile
       const { data: profileData } = await supabase
         .from("profiles")
         .select("*")
@@ -34,107 +32,104 @@ export default function PublicProfile() {
 
       setProfile(profileData);
 
-      // Load posts
       const { data: postsData } = await supabase
         .from("posts")
         .select("*")
         .eq("user_id", userId)
         .order("created_at", { ascending: false });
 
-      setPosts(postsData || []);
-      setLoading(false);
+      setPosts(postsData);
     };
 
     load();
   }, [userId]);
 
-  if (loading) return <p className="text-center mt-10">Loading...</p>;
-  if (!profile) return <p className="text-center mt-10">User not found.</p>;
+  if (!profile) {
+    return <div className="p-6">Loading...</div>;
+  }
 
   return (
-    <div className="max-w-3xl mx-auto p-6">
+    <div className="p-6 max-w-4xl mx-auto">
+      <div className="bg-white p-6 rounded-lg shadow-sm">
+        
+        {/* HEADER */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <img
+              src={profile.avatar_url || "/default-avatar.png"}
+              className="w-20 h-20 rounded-full object-cover"
+              alt="avatar"
+            />
+            <div>
+              <h2 className="text-2xl font-bold">{profile.full_name}</h2>
+              <p className="text-gray-600">@{profile.username}</p>
+            </div>
+          </div>
 
-      {/* --- Header Section --- */}
-      <div className="flex items-center gap-4">
-        <img
-          src={profile.avatar_url || "/default-avatar.png"}
-          className="w-24 h-24 rounded-full border"
-        />
-        <div>
-          <h2 className="text-2xl font-bold">{profile.full_name}</h2>
-          <p className="text-gray-600">@{profile.username}</p>
-        </div>
-      </div>
-
-      {/* --- Bio --- */}
-      {profile.bio && (
-        <div className="mt-6 p-4 bg-white border rounded-lg">
-          <h3 className="font-semibold mb-2">Bio</h3>
-          <p>{profile.bio}</p>
-        </div>
-      )}
-
-      {/* --- Skills Tags --- */}
-      {profile.skills && profile.skills.length > 0 && (
-        <div className="mt-6 p-4 bg-white border rounded-lg">
-          <h3 className="font-semibold mb-2">Skills</h3>
-
-          <div className="flex flex-wrap gap-2">
-            {profile.skills.map((s) => (
-              <span
-                key={s}
-                className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm"
-              >
-                {s}
-              </span>
-            ))}
+          <div>
+            {userId && <FollowButton targetUserId={userId} />}
           </div>
         </div>
-      )}
 
-      {/* --- Website --- */}
-      {profile.website && (
-        <div className="mt-6 p-4 bg-white border rounded-lg">
-          <h3 className="font-semibold mb-2">Website</h3>
-          <a
-            href={profile.website}
-            target="_blank"
-            className="text-blue-600 underline break-all"
-          >
-            {profile.website}
-          </a>
-        </div>
-      )}
-
-      {/* --- Posts --- */}
-      <div className="mt-10 mb-16">
-        <h3 className="text-xl font-bold mb-4">Posts</h3>
-
-        {posts.length === 0 ? (
-          <p className="text-gray-500">This user has not posted anything yet.</p>
-        ) : (
-          <div className="grid md:grid-cols-2 gap-4">
-            {posts.map((post) => (
-              <ProjectCard
-                key={post.id}
-                image={post.cover_image_url || "/default-blog.png"}
-                title={post.title}
-                author={profile.full_name || ""}
-                techStack={post.tags?.join(", ") || ""}
-                description={post.short_description}
-                likes_count={post.likes_count}
-                onUpvote={() => {}}
-                onClick={() =>
-                  navigate(
-                    post.type === "blog"
-                      ? `/blogs/${post.id}`
-                      : `/projects/${post.id}`
-                  )
-                }
-              />
-            ))}
+        {/* BIO */}
+        {profile.bio && (
+          <div className="mt-6 p-4 bg-white border rounded-lg">
+            <p className="text-sm text-slate-700">{profile.bio}</p>
           </div>
         )}
+
+        {/* WEBSITE + SKILLS */}
+        <div className="mt-4 flex flex-wrap gap-3">
+          {profile.website && (
+            <a
+              className="text-sm text-sky-600"
+              href={profile.website}
+              target="_blank"
+              rel="noreferrer"
+            >
+              {profile.website}
+            </a>
+          )}
+
+          {profile.skills?.map((s) => (
+            <span key={s} className="text-xs bg-slate-100 px-2 py-1 rounded">
+              {s}
+            </span>
+          ))}
+        </div>
+
+        {/* POSTS */}
+        <div className="mt-6">
+          <h3 className="text-lg font-medium mb-3">Posts</h3>
+
+          {posts?.length === 0 && (
+            <div className="text-sm text-slate-500">
+              This user has no posts yet.
+            </div>
+          )}
+
+          {posts && (
+            <div className="grid grid-cols-1 gap-4">
+              {posts.map((post: any) => (
+                <ProjectCard
+                  key={post.id}
+                  image={post.image_url || "/placeholder.png"}
+                  title={post.title}
+                  description={post.excerpt || post.description || ""}
+                  author={profile.full_name || ""}
+                  techStack={post.tags?.join(", ")}
+                  onClick={() =>
+                    navigate(
+                      post.type === "blog"
+                        ? `/blogs/${post.id}`
+                        : `/projects/${post.id}`
+                    )
+                  }
+                />
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
