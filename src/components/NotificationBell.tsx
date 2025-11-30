@@ -4,7 +4,8 @@ import { Bell } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   getUnreadNotifications,
-  subscribeToNotifications
+  subscribeToNotifications,
+  markNotificationsRead
 } from "@/lib/notifications";
 import { useNotificationsContext } from "@/contexts/NotificationsContext";
 import NotificationPanel from "@/components/NotificationPanel";
@@ -15,7 +16,7 @@ export default function NotificationBell() {
   const [count, setCount] = useState(0);
   const { pushNotification } = useNotificationsContext();
 
-  // Load unread count & realtime subscription
+  // Load unread notifications initially + subscribe to realtime new ones
   useEffect(() => {
     if (!user) return;
 
@@ -31,6 +32,14 @@ export default function NotificationBell() {
 
     return () => unsub();
   }, [user]);
+
+  // ⭐ When the panel opens → clear unread count instantly + update Supabase
+  useEffect(() => {
+    if (open && count > 0 && user) {
+      setCount(0); // instantly update UI
+      markNotificationsRead(user.id); // update DB
+    }
+  }, [open, count, user]);
 
   return (
     <>
@@ -48,7 +57,7 @@ export default function NotificationBell() {
         )}
       </button>
 
-      {/* BACKDROP for outside click */}
+      {/* BACKDROP to close on outside click */}
       {open && (
         <div
           onClick={() => setOpen(false)}
@@ -56,7 +65,7 @@ export default function NotificationBell() {
         />
       )}
 
-      {/* Notification Panel (only visible when open) */}
+      {/* Notification Panel */}
       {open && (
         <div className="fixed right-6 top-[150px] w-80 z-[999]">
           <NotificationPanel onClose={() => setOpen(false)} />
