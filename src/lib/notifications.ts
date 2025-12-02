@@ -11,19 +11,24 @@ export async function getUnreadNotifications(userId: string) {
     .eq("user_id", userId)
     .eq("is_read", false)
     .order("created_at", { ascending: false });
+
   return { data, error };
 }
 
 /**
- * Get all notifications (recent)
+ * Get ONLY unread notifications (for the Panel)
+ * We no longer return old read notifications,
+ * so they do NOT reappear after clearing.
  */
 export async function getAllNotifications(userId: string, limit = 50) {
   const { data, error } = await supabase
     .from("notifications")
     .select("*")
     .eq("user_id", userId)
+    .eq("is_read", false)        // ⭐ FIX: only unread
     .order("created_at", { ascending: false })
     .limit(limit);
+
   return { data, error };
 }
 
@@ -36,25 +41,29 @@ export async function markNotificationsRead(userId: string) {
     .update({ is_read: true })
     .eq("user_id", userId)
     .eq("is_read", false);
+
   return { data, error };
 }
 
 /**
  * Subscribe to notifications insert events for the logged-in user.
- * Returns an unsubscribe function to call when cleaning up.
- *
- * NOTE: Supabase JS v2 channel API used: supabase.channel(...).on(...).subscribe();
  */
-export function subscribeToNotifications(userId: string, onInsert: (row: any) => void) {
-  // build channel name unique per user
+export function subscribeToNotifications(
+  userId: string,
+  onInsert: (row: any) => void
+) {
   const channel = supabase
     .channel(`public:notifications:user_id=eq.${userId}`)
     .on(
       "postgres_changes",
-      { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${userId}` },
+      {
+        event: "INSERT",
+        schema: "public",
+        table: "notifications",
+        filter: `user_id=eq.${userId}`,
+      },
       (payload) => {
-        // payload.new contains the inserted row
-        onInsert(payload.new);
+        onInsert(payload.new); // new unread notification
       }
     )
     .subscribe();
@@ -62,8 +71,6 @@ export function subscribeToNotifications(userId: string, onInsert: (row: any) =>
   return () => {
     try {
       supabase.removeChannel(channel);
-    } catch (e) {
-      // ignore removal errors
-    }
+    } catch (e) {}
   };
 }

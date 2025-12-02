@@ -5,13 +5,14 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useNotificationsContext } from "@/contexts/NotificationsContext";
 
 interface NotificationPanelProps {
-  onClose?: () => void; // Required for closing panel
+  onClose?: () => void;
 }
 
 export default function NotificationPanel({ onClose }: NotificationPanelProps) {
   const { user } = useAuth() as any;
   const [notifications, setNotifications] = useState<any[]>([]);
-  const { queue } = useNotificationsContext();
+
+  const { queue, clearQueue } = useNotificationsContext(); // ⭐ Add clearQueue
 
   useEffect(() => {
     if (!user) return;
@@ -30,7 +31,13 @@ export default function NotificationPanel({ onClose }: NotificationPanelProps) {
 
   async function handleMarkAllRead() {
     if (!user) return;
+
     await markNotificationsRead(user.id);
+
+    // ⭐ INSTANLY CLEAR UI LIST
+    setNotifications([]); 
+    clearQueue(); // removes realtime ones too
+
     if (onClose) onClose();
   }
 
@@ -45,9 +52,7 @@ export default function NotificationPanel({ onClose }: NotificationPanelProps) {
 
       <div className="max-h-96 overflow-auto">
         {merged.length === 0 ? (
-          <div className="p-4 text-sm text-slate-500">
-            No notifications yet.
-          </div>
+          <div className="p-4 text-sm text-slate-500">No notifications yet.</div>
         ) : (
           merged.map((n: any) => (
             <div

@@ -14,7 +14,8 @@ export default function NotificationBell() {
   const { user } = useAuth() as any;
   const [open, setOpen] = useState(false);
   const [count, setCount] = useState(0);
-  const { pushNotification } = useNotificationsContext();
+
+  const { pushNotification, clearQueue } = useNotificationsContext();
 
   // Load unread notifications initially + subscribe to realtime new ones
   useEffect(() => {
@@ -33,13 +34,14 @@ export default function NotificationBell() {
     return () => unsub();
   }, [user]);
 
-  // ⭐ When the panel opens → clear unread count instantly + update Supabase
+  // ⭐ When panel opens → clear unread count, mark read, and clear UI
   useEffect(() => {
-    if (open && count > 0 && user) {
-      setCount(0); // instantly update UI
-      markNotificationsRead(user.id); // update DB
+    if (open && user) {
+      setCount(0);
+      clearQueue();
+      markNotificationsRead(user.id);
     }
-  }, [open, count, user]);
+  }, [open, user, clearQueue]);
 
   return (
     <>
@@ -57,7 +59,7 @@ export default function NotificationBell() {
         )}
       </button>
 
-      {/* BACKDROP to close on outside click */}
+      {/* BACKDROP */}
       {open && (
         <div
           onClick={() => setOpen(false)}
@@ -65,7 +67,7 @@ export default function NotificationBell() {
         />
       )}
 
-      {/* Notification Panel */}
+      {/* PANEL */}
       {open && (
         <div className="fixed right-6 top-[150px] w-80 z-[999]">
           <NotificationPanel onClose={() => setOpen(false)} />

@@ -11,22 +11,44 @@ type NotificationRow = {
   created_at?: string;
 };
 
-const NotificationsContext = createContext({
-  queue: [] as NotificationRow[],
-  pushNotification: (n: NotificationRow) => {},
+type NotificationsContextType = {
+  queue: NotificationRow[];
+  pushNotification: (n: NotificationRow) => void;
+  clearQueue: () => void;
+};
+
+const NotificationsContext = createContext<NotificationsContextType>({
+  queue: [],
+  pushNotification: () => {},
+  clearQueue: () => {},
 });
 
-export const useNotificationsContext = () => useContext(NotificationsContext);
+export const useNotificationsContext = () =>
+  useContext(NotificationsContext);
 
-export const NotificationsProvider = ({ children }: { children: React.ReactNode }) => {
+export const NotificationsProvider = ({
+  children,
+}: {
+  children: React.ReactNode;
+}) => {
   const [queue, setQueue] = useState<NotificationRow[]>([]);
 
   function pushNotification(n: NotificationRow) {
     setQueue((q) => [n, ...q]);
   }
 
+  function clearQueue() {
+    setQueue([]); // ⭐ Clears realtime notifications instantly
+  }
+
   return (
-    <NotificationsContext.Provider value={{ queue, pushNotification }}>
+    <NotificationsContext.Provider
+      value={{
+        queue,
+        pushNotification,
+        clearQueue, // ⭐ Make function available to NotificationPanel
+      }}
+    >
       {children}
     </NotificationsContext.Provider>
   );
