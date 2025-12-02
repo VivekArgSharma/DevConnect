@@ -1,10 +1,15 @@
 // src/lib/posts.ts
 import { supabase } from "./supabaseClient";
 
-/** Fetch all tags with counts */
-export async function fetchAllTags() {
+// Fetch tags by content type (project or blog)
+export async function fetchAllTags(type: "project" | "blog") {
+  const viewName =
+    type === "project"
+      ? "project_tags_aggregate"
+      : "blog_tags_aggregate";
+
   const { data, error } = await supabase
-    .from("tags_aggregate")
+    .from(viewName)
     .select("*")
     .order("tag_count", { ascending: false });
 
@@ -12,17 +17,18 @@ export async function fetchAllTags() {
   return data;
 }
 
-/** Fetch posts with tag filtering */
+/**
+ * Fetch posts by type and tags.
+ */
 export async function fetchPostsByTags(
-  p_type: string | null,
+  p_type: "project" | "blog",
   selectedTags?: string[]
 ) {
   let query = supabase
     .from("posts")
     .select("*, profiles(full_name)")
+    .eq("type", p_type)
     .order("created_at", { ascending: false });
-
-  if (p_type) query = query.eq("type", p_type);
 
   if (selectedTags && selectedTags.length > 0) {
     query = query.contains("tags", selectedTags);
@@ -33,7 +39,9 @@ export async function fetchPostsByTags(
   return data;
 }
 
-/** Create or update post */
+/**
+ * Create or update a post
+ */
 export async function upsertPost(payload: any) {
   if (payload.id) {
     const { data, error } = await supabase

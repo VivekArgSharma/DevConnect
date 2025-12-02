@@ -20,35 +20,25 @@ export default function Blogs() {
 
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
-  const {
-    data: posts = [],
-    isLoading,
-  } = useQuery({
+  const { data: posts = [], isLoading } = useQuery({
     queryKey: ["blogs", selectedTags],
-    queryFn: async () => {
-      const data = await fetchPostsByTags("blog", selectedTags);
-      return data || [];
-    },
+    queryFn: async () =>
+      await fetchPostsByTags("blog", selectedTags),
   });
 
   return (
     <div className="max-w-6xl mx-auto py-10 space-y-8 px-4">
       <h1 className="text-3xl font-bold">All Blogs</h1>
 
-      {/* TAG FILTER */}
-      <div className="my-4">
-        <TagsFilter
-  selected={selectedTags}
-  onChange={setSelectedTags}
-  type="blog"
-/>
+      <TagsFilter
+        selected={selectedTags}
+        onChange={setSelectedTags}
+        type="blog"
+      />
 
-      </div>
-
-      {/* BLOGS GRID */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {isLoading && <p>Loading blogs…</p>}
-        {!isLoading && posts.length === 0 && <p>No blogs found</p>}
+        {!isLoading && posts?.length === 0 && <p>No blogs found</p>}
 
         {posts.map((post) => (
           <ProjectCard
@@ -56,8 +46,8 @@ export default function Blogs() {
             image={post.cover_image_url}
             title={post.title}
             author={post.profiles?.full_name || "Unknown"}
-            techStack={post.tags?.join(", ") || "Blog"}
-            description={post.short_description || ""}
+            techStack={post.tags?.join(", ") || ""}
+            description={post.short_description}
             likes_count={post.likes_count}
             onClick={() => navigate(`/blogs/${post.id}`)}
             onUpvote={async () => {
