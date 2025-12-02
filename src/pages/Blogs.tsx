@@ -38,10 +38,11 @@ export default function Blogs() {
       {/* TAG FILTER */}
       <div className="my-4">
         <TagsFilter
-          selected={selectedTags}
-          onChange={setSelectedTags}
-          type="blog"
-        />
+  selected={selectedTags}
+  onChange={setSelectedTags}
+  type="blog"
+/>
+
       </div>
 
       {/* BLOGS GRID */}

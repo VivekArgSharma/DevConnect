@@ -38,10 +38,11 @@ export default function Projects() {
       {/* TAG FILTER */}
       <div className="my-4">
         <TagsFilter
-          selected={selectedTags}
-          onChange={setSelectedTags}
-          type="project"
-        />
+  selected={selectedTags}
+  onChange={setSelectedTags}
+  type="project"
+/>
+
       </div>
 
       {/* PROJECT GRID */}
