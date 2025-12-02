@@ -43,13 +43,7 @@ export default function ProjectDetails() {
   });
 
   const createTop = useMutation({
-    mutationFn: async ({
-      post_id,
-      content,
-    }: {
-      post_id: string;
-      content: string;
-    }) => {
+    mutationFn: async ({ post_id, content }: { post_id: string; content: string; }) => {
       if (!accessToken) throw new Error("Not authenticated");
       return createComment(post_id, content, accessToken, API_URL);
     },
@@ -60,15 +54,7 @@ export default function ProjectDetails() {
   });
 
   const createReply = useMutation({
-    mutationFn: async ({
-      post_id,
-      content,
-      parent_id,
-    }: {
-      post_id: string;
-      content: string;
-      parent_id?: string;
-    }) => {
+    mutationFn: async ({ post_id, content, parent_id }: { post_id: string; content: string; parent_id?: string; }) => {
       if (!accessToken) throw new Error("Not authenticated");
       return createComment(post_id, content, accessToken, API_URL, parent_id);
     },
@@ -85,9 +71,7 @@ export default function ProjectDetails() {
     onSuccess: () => refetchComments(),
   });
 
-  const commentTree = useMemo(() => buildCommentTree(commentsRaw || []), [
-    commentsRaw,
-  ]);
+  const commentTree = useMemo(() => buildCommentTree(commentsRaw || []), [commentsRaw]);
 
   if (!post) return <div>Loading...</div>;
 
@@ -100,6 +84,13 @@ export default function ProjectDetails() {
   return (
     <div className="max-w-4xl mx-auto p-6">
       <h1 className="text-3xl font-bold">{post.title}</h1>
+
+      {/* Tags */}
+      <div className="mt-2 flex gap-2 flex-wrap">
+        {(post.tags || []).map((t: string) => (
+          <span key={t} className="px-3 py-1 rounded-full border text-sm">{t}</span>
+        ))}
+      </div>
 
       <div className="flex items-center gap-3 mt-3">
         <img
@@ -188,7 +179,6 @@ export default function ProjectDetails() {
           </div>
         )}
 
-        {/* DELETE BUTTON AT BOTTOM */}
         <div className="mt-10 pb-10">
           <DeletePostButton postId={post.id} ownerId={post.user_id} />
         </div>
@@ -197,7 +187,7 @@ export default function ProjectDetails() {
   );
 }
 
-/* helpers identical to BlogDetails */
+/* helpers (unchanged) */
 function buildCommentTree(flat: any[]) {
   const map = new Map<string, any>();
   for (const r of flat) {
@@ -218,14 +208,8 @@ function buildCommentTree(flat: any[]) {
   return roots;
 }
 
-function CommentNode({
-  node,
-  depth,
-  goToUser,
-  currentUserId,
-  onReplySubmit,
-  onDelete,
-}: any) {
+/* CommentNode (same as before) */
+function CommentNode({ node, depth, goToUser, currentUserId, onReplySubmit, onDelete }: any) {
   const [showReply, setShowReply] = useState(false);
   const [replyText, setReplyText] = useState("");
 
@@ -239,9 +223,7 @@ function CommentNode({
   return (
     <div>
       <div
-        className={`p-3 rounded ${
-          isRoot ? "bg-white border" : "bg-gray-50"
-        }`}
+        className={`p-3 rounded ${isRoot ? "bg-white border" : "bg-gray-50"}`}
         style={{ marginLeft: depth * 18 }}
       >
         <div className="flex gap-3">
@@ -265,10 +247,7 @@ function CommentNode({
               </div>
 
               {currentUserId === node.user_id && (
-                <button
-                  className="text-red-500 text-xs underline"
-                  onClick={() => onDelete(node.id)}
-                >
+                <button className="text-red-500 text-xs underline" onClick={() => onDelete(node.id)}>
                   Delete
                 </button>
               )}
@@ -277,39 +256,19 @@ function CommentNode({
             <p className="mt-2 whitespace-pre-wrap">{node.content}</p>
 
             <div className="mt-2 flex items-center gap-3">
-              <button
-                className="text-sm text-gray-600 underline"
-                onClick={() => setShowReply((s) => !s)}
-              >
+              <button className="text-sm text-gray-600 underline" onClick={() => setShowReply((s) => !s)}>
                 Reply
               </button>
             </div>
 
             {showReply && (
               <div className="mt-2">
-                <Textarea
-                  value={replyText}
-                  onChange={(e) => setReplyText(e.target.value)}
-                  placeholder="Write a reply..."
-                />
+                <Textarea value={replyText} onChange={(e) => setReplyText(e.target.value)} placeholder="Write a reply..." />
                 <div className="mt-2 flex gap-2">
-                  <Button
-                    onClick={() => {
-                      if (!replyText.trim()) return;
-                      onReplySubmit(node.id, replyText.trim());
-                      setReplyText("");
-                      setShowReply(false);
-                    }}
-                  >
+                  <Button onClick={() => { if (!replyText.trim()) return; onReplySubmit(node.id, replyText.trim()); setReplyText(""); setShowReply(false); }}>
                     Reply
                   </Button>
-                  <Button
-                    variant="ghost"
-                    onClick={() => {
-                      setShowReply(false);
-                      setReplyText("");
-                    }}
-                  >
+                  <Button variant="ghost" onClick={() => { setShowReply(false); setReplyText(""); }}>
                     Cancel
                   </Button>
                 </div>
@@ -322,15 +281,7 @@ function CommentNode({
       {node.children && node.children.length > 0 && (
         <div className="mt-2 space-y-2">
           {node.children.map((child: any) => (
-            <CommentNode
-              key={child.id}
-              node={child}
-              depth={depth + 1}
-              goToUser={goToUser}
-              currentUserId={currentUserId}
-              onReplySubmit={onReplySubmit}
-              onDelete={onDelete}
-            />
+            <CommentNode key={child.id} node={child} depth={depth + 1} goToUser={goToUser} currentUserId={currentUserId} onReplySubmit={onReplySubmit} onDelete={onDelete} />
           ))}
         </div>
       )}

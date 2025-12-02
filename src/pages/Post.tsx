@@ -7,11 +7,19 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/AuthContext";
+import TagInput from "@/components/TagInput";
 
 type PostType = "project" | "blog" | null;
 type FormState = "idle" | "loading" | "success" | "error";
 
 const API_URL = import.meta.env.VITE_API_URL as string;
+
+const normalizeTags = (raw: string[]) => {
+  const cleaned = raw
+    .map((t) => t.trim().toLowerCase())
+    .filter(Boolean);
+  return Array.from(new Set(cleaned));
+};
 
 const Post = () => {
   const [postType, setPostType] = useState<PostType>(null);
@@ -28,11 +36,13 @@ const Post = () => {
   const [projectDescription, setProjectDescription] = useState("");
   const [projectDetailedWriteup, setProjectDetailedWriteup] = useState("");
   const [projectGithubLink, setProjectGithubLink] = useState("");
+  const [projectTags, setProjectTags] = useState<string[]>([]);
 
   // Blog form state
   const [blogTitle, setBlogTitle] = useState("");
   const [blogImageUrls, setBlogImageUrls] = useState("");
   const [blogContent, setBlogContent] = useState("");
+  const [blogTags, setBlogTags] = useState<string[]>([]);
 
   const requireAuth = () => {
     if (!session) {
@@ -69,7 +79,7 @@ const Post = () => {
               .map((s) => s.trim())
               .filter(Boolean)
           : [],
-        tags: [], // you can add tech stack tags later
+        tags: normalizeTags(projectTags),
       };
 
       const res = await fetch(`${API_URL}/api/posts`, {
@@ -99,6 +109,7 @@ const Post = () => {
         setProjectDescription("");
         setProjectDetailedWriteup("");
         setProjectGithubLink("");
+        setProjectTags([]);
       }, 1500);
     } catch (err: any) {
       console.error(err);
@@ -130,7 +141,7 @@ const Post = () => {
               .map((s) => s.trim())
               .filter(Boolean)
           : [],
-        tags: [],
+        tags: normalizeTags(blogTags),
       };
 
       const res = await fetch(`${API_URL}/api/posts`, {
@@ -155,6 +166,7 @@ const Post = () => {
         setBlogTitle("");
         setBlogImageUrls("");
         setBlogContent("");
+        setBlogTags([]);
       }, 1500);
     } catch (err: any) {
       console.error(err);
@@ -328,6 +340,12 @@ const Post = () => {
             </div>
 
             <div className="space-y-2">
+              <Label>Tags / Tech Stack</Label>
+              <TagInput value={projectTags} onChange={setProjectTags} />
+              <p className="text-xs text-muted-foreground">Add tags like react, tailwind, supabase</p>
+            </div>
+
+            <div className="space-y-2">
               <Label htmlFor="project-detailed">
                 Detailed Writeup (shown on project page)
               </Label>
@@ -376,6 +394,12 @@ const Post = () => {
                 onChange={(e) => setBlogImageUrls(e.target.value)}
                 rows={3}
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Tags / Topics</Label>
+              <TagInput value={blogTags} onChange={setBlogTags} />
+              <p className="text-xs text-muted-foreground">Add tags like tutorial, react, supabase</p>
             </div>
 
             <div className="space-y-2">
