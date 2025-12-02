@@ -4,14 +4,13 @@ import { supabase } from "../lib/supabaseClient";
 import { Button } from "../components/ui/button";
 import { useNavigate } from "react-router-dom";
 
-import {ProjectCard} from "../components/ui/project-card"; // ✅ Correct import
+import { ProjectCard } from "../components/ui/project-card";
 
 export default function Profile() {
   const { user, signInWithGoogle, signOut } = useAuth();
   const navigate = useNavigate();
 
   const [profile, setProfile] = useState<any>(null);
-
   const [myProjects, setMyProjects] = useState<any[]>([]);
   const [myBlogs, setMyBlogs] = useState<any[]>([]);
 
@@ -49,21 +48,30 @@ export default function Profile() {
     loadMyPosts();
   }, [user]);
 
+  // -------------------------------
+  // NOT SIGNED IN VIEW
+  // -------------------------------
   if (!user) {
     return (
-      <div className="text-center py-10">
-        <h2 className="text-xl font-semibold">You are not signed in</h2>
+      <div className="flex flex-col items-center justify-center min-h-[80vh] pt-32">
+        <h2 className="text-xl font-semibold mb-4">You are not signed in</h2>
         <Button onClick={signInWithGoogle}>Sign in</Button>
       </div>
     );
   }
 
+  // -------------------------------
+  // LOADING PROFILE
+  // -------------------------------
   if (!profile) {
-    return <p className="text-center mt-10">Loading profile...</p>;
+    return <p className="text-center mt-40">Loading profile...</p>;
   }
 
+  // -------------------------------
+  // SIGNED IN VIEW
+  // -------------------------------
   return (
-    <div className="max-w-3xl mx-auto py-10">
+    <div className="max-w-3xl mx-auto pt-40 pb-20">
       {/* HEADER */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
@@ -98,7 +106,7 @@ export default function Profile() {
         <p className="text-gray-700">{profile.bio}</p>
       </div>
 
-      {/* SKILLS WITH TAG STYLING */}
+      {/* SKILLS */}
       <div className="mt-6">
         <h2 className="text-lg font-semibold mb-2">Skills</h2>
 
@@ -156,7 +164,7 @@ export default function Profile() {
       </div>
 
       {/* BLOGS */}
-      <div className="mt-10 mb-20">
+      <div className="mt-10">
         <h2 className="text-xl font-bold mb-4">My Blogs</h2>
 
         {myBlogs.length === 0 ? (
