@@ -48,30 +48,30 @@ export default function Profile() {
     loadMyPosts();
   }, [user]);
 
-  // -------------------------------
-  // NOT SIGNED IN VIEW
-  // -------------------------------
+  // ------------------------------------------
+  // NOT SIGNED IN VIEW (perfectly centered)
+  // ------------------------------------------
   if (!user) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[80vh] pt-32">
+      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)]">
         <h2 className="text-xl font-semibold mb-4">You are not signed in</h2>
         <Button onClick={signInWithGoogle}>Sign in</Button>
       </div>
     );
   }
 
-  // -------------------------------
+  // ------------------------------------------
   // LOADING PROFILE
-  // -------------------------------
+  // ------------------------------------------
   if (!profile) {
-    return <p className="text-center mt-40">Loading profile...</p>;
+    return <p className="text-center mt-20">Loading profile...</p>;
   }
 
-  // -------------------------------
+  // ------------------------------------------
   // SIGNED IN VIEW
-  // -------------------------------
+  // ------------------------------------------
   return (
-    <div className="max-w-3xl mx-auto pt-40 pb-20">
+    <div className="max-w-3xl mx-auto pb-20">
       {/* HEADER */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">

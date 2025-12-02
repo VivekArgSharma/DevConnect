@@ -2,12 +2,18 @@
 import { ReactNode } from "react";
 import { PillBase } from "@/components/ui/3d-adaptive-navigation-bar";
 import NotificationBell from "@/components/NotificationBell";
+import { useLocation } from "react-router-dom";
 
 interface LayoutProps {
   children: ReactNode;
 }
 
 const Layout = ({ children }: LayoutProps) => {
+  const location = useLocation();
+
+  // Home page should NOT be pushed down
+  const isHomePage = location.pathname === "/";
+
   return (
     <div className="relative min-h-screen">
 
@@ -19,8 +25,8 @@ const Layout = ({ children }: LayoutProps) => {
         </div>
       </div>
 
-      {/* PAGE CONTENT (NO PAD, NO NEGATIVE Z) */}
-      <main className="relative z-[1]">
+      {/* PAGE CONTENT */}
+      <main className={`relative z-[1] ${isHomePage ? "" : "pt-40"}`}>
         {children}
       </main>
     </div>
