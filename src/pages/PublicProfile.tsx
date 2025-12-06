@@ -1,8 +1,11 @@
+console.log("CHAT SERVER ENV:", import.meta.env.VITE_CHAT_SERVER_URL);
+
 import { useParams, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { ProjectCard } from "@/components/ui/project-card";
 import FollowButton from "@/components/FollowButton";
+import axios from "axios";
 
 interface Profile {
   id: string;
@@ -19,7 +22,22 @@ export default function PublicProfile() {
   const navigate = useNavigate();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [posts, setPosts] = useState<any[] | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
+  // ------------------------------
+  // LOAD CURRENT USER SESSION PROPERLY
+  // ------------------------------
+  useEffect(() => {
+    async function loadSession() {
+      const { data } = await supabase.auth.getSession();
+      setCurrentUserId(data.session?.user?.id || null);
+    }
+    loadSession();
+  }, []);
+
+  // ------------------------------
+  // LOAD PROFILE & POSTS
+  // ------------------------------
   useEffect(() => {
     if (!userId) return;
 
@@ -48,6 +66,44 @@ export default function PublicProfile() {
     return <div className="p-6">Loading...</div>;
   }
 
+  // ------------------------------
+  // DM HANDLER
+  // ------------------------------
+  async function handleDM() {
+    const sessionRes = await supabase.auth.getSession();
+    const token = sessionRes.data.session?.access_token;
+
+    console.log("FRONTEND TOKEN:", token); // Debug log
+
+    if (!token) {
+      alert("Please sign in to send a message.");
+      return;
+    }
+
+    try {
+      console.log(
+        "Calling:",
+        `${import.meta.env.VITE_CHAT_SERVER_URL}/chat/open`
+      );
+
+      const resp = await axios.post(
+        `${import.meta.env.VITE_CHAT_SERVER_URL}/chat/open`,
+        { other_user_id: userId },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      const chatId = resp.data.chat_id;
+      navigate(`/chat/${chatId}`);
+    } catch (error) {
+      console.error("DM ERROR:", error);
+      alert("Could not open chat.");
+    }
+  }
+
   return (
     <div className="p-6 max-w-4xl mx-auto">
       <div className="bg-white p-6 rounded-lg shadow-sm">
@@ -66,8 +122,19 @@ export default function PublicProfile() {
             </div>
           </div>
 
-          <div>
+          {/* Right-side buttons */}
+          <div className="flex gap-3">
             {userId && <FollowButton targetUserId={userId} />}
+
+            {/* Show DM button only if viewing someone else's profile */}
+            {currentUserId && currentUserId !== userId && (
+              <button
+                onClick={handleDM}
+                className="px-3 py-1 rounded bg-blue-600 text-white hover:bg-blue-700"
+              >
+                DM
+              </button>
+            )}
           </div>
         </div>
 

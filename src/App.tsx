@@ -4,7 +4,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 
-
 import Layout from "./components/Layout";
 import Index from "./pages/Index";
 import Projects from "./pages/Projects";
@@ -15,56 +14,51 @@ import Profile from "./pages/Profile";
 import ProjectDetails from "./pages/ProjectDetails";
 import BlogDetails from "./pages/BlogDetails";
 import PublicProfile from "./pages/PublicProfile";
-import EditProfile from "./pages/EditProfile"; // <-- new import
+import EditProfile from "./pages/EditProfile";
 
+// ✅ ADD THIS IMPORT
+import ChatPage from "./pages/ChatPage";
 
 const queryClient = new QueryClient();
 
-
 export default function App() {
-return (
-<QueryClientProvider client={queryClient}>
-<TooltipProvider>
-<BrowserRouter>
-<Layout>
-<Routes>
-<Route path="/" element={<Index />} />
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <BrowserRouter>
+          <Layout>
+            <Routes>
+              <Route path="/" element={<Index />} />
 
+              <Route path="/projects" element={<Projects />} />
+              <Route path="/projects/:id" element={<ProjectDetails />} />
 
-<Route path="/projects" element={<Projects />} />
-<Route path="/projects/:id" element={<ProjectDetails />} />
+              <Route path="/blogs" element={<Blogs />} />
+              <Route path="/blogs/:id" element={<BlogDetails />} />
 
+              <Route path="/post/:id" element={<Post />} />
+              <Route path="/post" element={<Post />} />
 
-<Route path="/blogs" element={<Blogs />} />
-<Route path="/blogs/:id" element={<BlogDetails />} />
+              {/* Current User Profile */}
+              <Route path="/profile" element={<Profile />} />
 
+              {/* Edit Profile */}
+              <Route path="/edit-profile" element={<EditProfile />} />
 
-<Route path="/post/:id" element={<Post />} />
-<Route path="/post" element={<Post />} />
+              {/* Public User Profile */}
+              <Route path="/user/:userId" element={<PublicProfile />} />
 
+              {/* ✅ FIXED: CHAT ROUTE ADDED */}
+              <Route path="/chat/:chatId" element={<ChatPage />} />
 
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </Layout>
+        </BrowserRouter>
 
-{/* profile (current user) */}
-<Route path="/profile" element={<Profile />} />
-
-
-{/* edit profile (current user only) */}
-<Route path="/edit-profile" element={<EditProfile />} />
-
-
-{/* public profile (other users) */}
-<Route path="/user/:userId" element={<PublicProfile />} />
-
-
-<Route path="*" element={<NotFound />} />
-</Routes>
-</Layout>
-</BrowserRouter>
-
-
-<Toaster />
-<Sonner />
-</TooltipProvider>
-</QueryClientProvider>
-);
+        <Toaster />
+        <Sonner />
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
 }
