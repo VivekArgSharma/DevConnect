@@ -16,8 +16,9 @@ import BlogDetails from "./pages/BlogDetails";
 import PublicProfile from "./pages/PublicProfile";
 import EditProfile from "./pages/EditProfile";
 
-// ✅ ADD THIS IMPORT
+// ✅ CHAT PAGES
 import ChatPage from "./pages/ChatPage";
+import Chats from "./pages/Chats"; // ✅ DM LIST PAGE
 
 const queryClient = new QueryClient();
 
@@ -48,7 +49,8 @@ export default function App() {
               {/* Public User Profile */}
               <Route path="/user/:userId" element={<PublicProfile />} />
 
-              {/* ✅ FIXED: CHAT ROUTE ADDED */}
+              {/* ✅ CHAT ROUTES */}
+              <Route path="/chats" element={<Chats />} />
               <Route path="/chat/:chatId" element={<ChatPage />} />
 
               <Route path="*" element={<NotFound />} />

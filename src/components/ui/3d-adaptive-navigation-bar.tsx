@@ -21,14 +21,15 @@ export const PillBase: React.FC = () => {
   const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const prevSectionRef = useRef('home')
 
+  // ✅ CHATS ADDED HERE
   const navItems: NavItem[] = [
-  { label: 'Home', id: 'home', path: '/' },
-  { label: 'Projects', id: 'projects', path: '/projects' },
-  { label: 'Blogs', id: 'blogs', path: '/blogs' },
-  { label: 'Post', id: 'post', path: '/post' },
-  { label: 'Profile', id: 'profile', path: '/profile' },
-];
-
+    { label: 'Home', id: 'home', path: '/' },
+    { label: 'Projects', id: 'projects', path: '/projects' },
+    { label: 'Blogs', id: 'blogs', path: '/blogs' },
+    { label: 'Post', id: 'post', path: '/post' },
+    { label: 'Profile', id: 'profile', path: '/profile' },
+    { label: 'Chats', id: 'chats', path: '/chats' }, // ✅ NEW
+  ]
 
   // smooth animation
   const pillWidth = useSpring(140, { stiffness: 220, damping: 25 })
@@ -45,7 +46,7 @@ export const PillBase: React.FC = () => {
   useEffect(() => {
     if (hovering) {
       setExpanded(true)
-      pillWidth.set(580)
+      pillWidth.set(620) // ✅ slightly wider to fit Chats nicely
       if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current)
     } else {
       hoverTimeoutRef.current = setTimeout(() => {
@@ -60,7 +61,6 @@ export const PillBase: React.FC = () => {
 
     const currentIndex = navItems.findIndex(n => n.id === activeSection)
     const targetIndex = navItems.findIndex(n => n.id === item.id)
-
     const dir = targetIndex > currentIndex ? 1 : -1
 
     setIsTransitioning(true)
@@ -71,7 +71,6 @@ export const PillBase: React.FC = () => {
     setTimeout(() => pillShift.set(0), 260)
 
     navigate(item.path)
-
     setTimeout(() => setIsTransitioning(false), 390)
   }
 
