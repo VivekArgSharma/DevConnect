@@ -56,6 +56,10 @@ export default function ChatPage() {
         );
 
         setMessages(resp.data.messages || []);
+
+        // ✅ ✅ ✅ THIS LINE FIXES YOUR UNREAD BADGE INSTANTLY
+        window.dispatchEvent(new Event("chat-read"));
+
       } catch (err) {
         console.error("Failed to load messages:", err);
       } finally {

@@ -34,13 +34,11 @@ export const PillBase: React.FC = () => {
   const pillWidth = useSpring(140, { stiffness: 220, damping: 25 });
   const pillShift = useSpring(0, { stiffness: 220, damping: 25 });
 
-  // Active section from route
   useEffect(() => {
     const match = navItems.find((n) => n.path === location.pathname);
     if (match) setActiveSection(match.id);
   }, [location.pathname]);
 
-  // Expand on hover
   useEffect(() => {
     if (hovering) {
       setExpanded(true);
@@ -54,7 +52,7 @@ export const PillBase: React.FC = () => {
     }
   }, [hovering]);
 
-  // Load unread total once
+  // ✅ ✅ ✅ THIS IS THE KEY FIX
   useEffect(() => {
     async function loadUnread() {
       const { data } = await supabase.auth.getSession();
@@ -80,7 +78,15 @@ export const PillBase: React.FC = () => {
       }
     }
 
+    // ✅ initial load
     loadUnread();
+
+    // ✅ live update when a chat is opened
+    window.addEventListener("chat-read", loadUnread);
+
+    return () => {
+      window.removeEventListener("chat-read", loadUnread);
+    };
   }, []);
 
   const handleClick = (item: NavItem) => {
@@ -107,7 +113,6 @@ export const PillBase: React.FC = () => {
         overflow: "hidden",
       }}
     >
-      {/* COMPACT: show active label */}
       {!expanded && activeItem && (
         <div className="absolute inset-0 flex items-center justify-center">
           <AnimatePresence mode="wait">
@@ -130,7 +135,6 @@ export const PillBase: React.FC = () => {
         </div>
       )}
 
-      {/* EXPANDED: full menu */}
       {expanded && (
         <div className="flex items-center justify-evenly w-full h-full px-6">
           {navItems.map((item, index) => {
