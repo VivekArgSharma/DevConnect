@@ -9,6 +9,7 @@ interface ChatItem {
   avatar_url: string | null;
   last_message: string;
   last_message_time: string;
+  unread_count: number;
 }
 
 export default function Chats() {
@@ -21,7 +22,10 @@ export default function Chats() {
       const { data } = await supabase.auth.getSession();
       const session = data.session;
 
-      if (!session) return;
+      if (!session) {
+        setLoading(false);
+        return;
+      }
 
       try {
         const res = await axios.get(
@@ -36,9 +40,9 @@ export default function Chats() {
         setChats(res.data.chats || []);
       } catch (err) {
         console.error("Failed to load chats", err);
+      } finally {
+        setLoading(false);
       }
-
-      setLoading(false);
     }
 
     loadChats();
@@ -64,8 +68,16 @@ export default function Chats() {
               src={chat.avatar_url || "/default-avatar.png"}
               className="w-12 h-12 rounded-full object-cover"
             />
+
             <div className="flex-1">
-              <div className="font-semibold">{chat.other_user_name}</div>
+              <div className="font-semibold flex items-center gap-2">
+                <span>{chat.other_user_name}</span>
+                {chat.unread_count > 0 && (
+                  <span className="bg-green-600 text-white text-xs rounded-full px-2 py-0.5">
+                    {chat.unread_count}
+                  </span>
+                )}
+              </div>
               <div className="text-sm text-gray-600 truncate">
                 {chat.last_message}
               </div>

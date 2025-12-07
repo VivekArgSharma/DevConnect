@@ -37,7 +37,6 @@ export default function ChatPage() {
       socketRef.current = socket;
 
       socket.off("message");
-      socket.off("chat_deleted");
 
       socket.on("message", (msg: any) => {
         if (msg.chat_id === chatId) {
@@ -48,22 +47,20 @@ export default function ChatPage() {
         }
       });
 
-      socket.on("chat_deleted", (payload: any) => {
-        if (payload.chat_id === chatId) {
-          alert("This chat was deleted.");
-          navigate("/");
-        }
-      });
+      try {
+        const resp = await axios.get(
+          `${import.meta.env.VITE_CHAT_SERVER_URL}/chat/${chatId}/messages`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
 
-      const resp = await axios.get(
-        `${import.meta.env.VITE_CHAT_SERVER_URL}/chat/${chatId}/messages`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-
-      setMessages(resp.data.messages || []);
-      setLoading(false);
+        setMessages(resp.data.messages || []);
+      } catch (err) {
+        console.error("Failed to load messages:", err);
+      } finally {
+        setLoading(false);
+      }
     }
 
     init();
@@ -94,7 +91,7 @@ export default function ChatPage() {
       }
     );
 
-    navigate("/");
+    navigate("/chats");
   }
 
   if (loading) return <div className="p-6">Loading chat...</div>;
