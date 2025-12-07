@@ -57,7 +57,7 @@ async function supabaseGetUser(token) {
 
 app.get("/", (req, res) => res.send({ ok: true }));
 
-// ✅ OPEN OR CREATE DM
+// ✅ OPEN OR CREATE DM (now also "undeletes" for current user)
 app.post("/chat/open", async (req, res) => {
   const token = (req.headers.authorization || "").replace("Bearer ", "");
   const user = await supabaseGetUser(token);
@@ -85,6 +85,14 @@ app.post("/chat/open", async (req, res) => {
 
     if (rows.length) {
       chatId = rows[0].id;
+
+      // ✅ If user had deleted this chat before, bring it back for them
+      await pool.query(
+        `UPDATE public.chat_participants
+         SET is_deleted = false
+         WHERE chat_id = $1 AND user_id = $2`,
+        [chatId, userId]
+      );
     } else {
       await pool.query("BEGIN");
 
@@ -94,8 +102,8 @@ app.post("/chat/open", async (req, res) => {
       chatId = created.rows[0].id;
 
       await pool.query(
-        `INSERT INTO public.chat_participants (chat_id, user_id)
-         VALUES ($1,$2), ($1,$3)`,
+        `INSERT INTO public.chat_participants (chat_id, user_id, is_deleted)
+         VALUES ($1,$2,false), ($1,$3,false)`,
         [chatId, userId, otherUserId]
       );
 
@@ -140,39 +148,58 @@ app.get("/chat/:chatId/messages", async (req, res) => {
   }
 });
 
-// ✅ DELETE CHAT
+// ✅ PER-USER DELETE CHAT (WhatsApp-style)
 app.delete("/chat/:chatId", async (req, res) => {
   const token = (req.headers.authorization || "").replace("Bearer ", "");
   const user = await supabaseGetUser(token);
   if (!user) return res.status(401).json({ error: "Unauthorized" });
 
+  const chatId = req.params.chatId;
+
   try {
+    // Check that this user is a participant
     const part = await pool.query(
       `SELECT 1 FROM public.chat_participants WHERE chat_id = $1 AND user_id = $2`,
-      [req.params.chatId, user.id]
+      [chatId, user.id]
     );
 
     if (!part.rowCount)
       return res.status(403).json({ error: "not_participant" });
 
-    await pool.query("BEGIN");
-
-    await pool.query(`DELETE FROM public.messages WHERE chat_id = $1`, [
-      req.params.chatId,
-    ]);
+    // ✅ Soft delete only for this user
     await pool.query(
-      `DELETE FROM public.chat_participants WHERE chat_id = $1`,
-      [req.params.chatId]
+      `UPDATE public.chat_participants
+       SET is_deleted = true
+       WHERE chat_id = $1 AND user_id = $2`,
+      [chatId, user.id]
     );
-    await pool.query(`DELETE FROM public.chats WHERE id = $1`, [
-      req.params.chatId,
-    ]);
 
-    await pool.query("COMMIT");
+    // ✅ If no one else still has this chat → hard delete everything
+    const remaining = await pool.query(
+      `SELECT COUNT(*) AS cnt
+       FROM public.chat_participants
+       WHERE chat_id = $1 AND is_deleted = false`,
+      [chatId]
+    );
 
-    io.to(req.params.chatId).emit("chat_deleted", {
-      chat_id: req.params.chatId,
-    });
+    const stillActive = Number(remaining.rows[0].cnt);
+
+    if (stillActive === 0) {
+      await pool.query("BEGIN");
+
+      await pool.query(`DELETE FROM public.messages WHERE chat_id = $1`, [
+        chatId,
+      ]);
+      await pool.query(
+        `DELETE FROM public.chat_participants WHERE chat_id = $1`,
+        [chatId]
+      );
+      await pool.query(`DELETE FROM public.chats WHERE id = $1`, [chatId]);
+
+      await pool.query("COMMIT");
+
+      io.to(chatId).emit("chat_deleted", { chat_id: chatId });
+    }
 
     res.json({ ok: true });
   } catch (err) {
@@ -200,18 +227,23 @@ app.get("/chats", async (req, res) => {
         p.avatar_url,
         m.content AS last_message,
         m.created_at AS last_message_time
-      FROM chats c
-      JOIN chat_participants cp1 ON cp1.chat_id = c.id
-      JOIN chat_participants cp2 ON cp2.chat_id = c.id AND cp2.user_id != cp1.user_id
-      JOIN profiles p ON p.id = cp2.user_id
+      FROM public.chats c
+      JOIN public.chat_participants cp1 
+        ON cp1.chat_id = c.id 
+       AND cp1.user_id = $1
+       AND cp1.is_deleted = false       -- ✅ only chats not deleted by this user
+      JOIN public.chat_participants cp2 
+        ON cp2.chat_id = c.id 
+       AND cp2.user_id != cp1.user_id
+      JOIN public.profiles p 
+        ON p.id = cp2.user_id
       JOIN LATERAL (
         SELECT content, created_at
-        FROM messages
+        FROM public.messages
         WHERE chat_id = c.id
         ORDER BY created_at DESC
         LIMIT 1
       ) m ON true
-      WHERE cp1.user_id = $1
       ORDER BY m.created_at DESC
     `,
       [user.id]
@@ -246,9 +278,12 @@ io.on("connection", (socket) => {
   const user = socket.user;
   console.log("Socket connected:", user.id);
 
+  // ✅ join only chats this user hasn't deleted
   (async () => {
     const { rows } = await pool.query(
-      `SELECT chat_id FROM public.chat_participants WHERE user_id = $1`,
+      `SELECT chat_id 
+       FROM public.chat_participants 
+       WHERE user_id = $1 AND is_deleted = false`,
       [user.id]
     );
     rows.forEach((r) => socket.join(r.chat_id));
