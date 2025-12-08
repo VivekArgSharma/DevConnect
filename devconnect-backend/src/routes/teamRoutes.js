@@ -1,5 +1,3 @@
-// src/routes/teamRoutes.js
-
 import express from "express";
 import { requireAuth } from "../middleware/authMiddleware.js";
 import { supabaseAdmin } from "../config/supabaseClient.js";
@@ -22,7 +20,7 @@ async function getTeamPostById(id) {
 }
 
 /* -----------------------------------------------------
-   CREATE TEAM POST  (Ask for teammates)
+   CREATE TEAM POST
    POST /api/teams/posts
 ----------------------------------------------------- */
 router.post("/posts", requireAuth, async (req, res) => {
@@ -117,7 +115,6 @@ router.get("/posts/:id", async (req, res) => {
 /* -----------------------------------------------------
    CLOSE APPLICATIONS FOR A POST
    POST /api/teams/posts/:id/close
-   Only owner can do this
 ----------------------------------------------------- */
 router.post("/posts/:id/close", requireAuth, async (req, res) => {
   try {
@@ -134,7 +131,7 @@ router.post("/posts/:id/close", requireAuth, async (req, res) => {
     }
 
     if (post.status === "closed") {
-      return res.json(post); // already closed
+      return res.json(post);
     }
 
     const { data, error } = await supabaseAdmin
@@ -213,7 +210,7 @@ router.post("/posts/:id/apply", requireAuth, async (req, res) => {
 });
 
 /* -----------------------------------------------------
-   GET APPLICATIONS FOR YOUR TEAM POSTS
+   ✅ ✅ ✅ FIXED: GET APPLICATIONS FOR YOUR TEAM POSTS
    GET /api/teams/applications/received
 ----------------------------------------------------- */
 router.get("/applications/received", requireAuth, async (req, res) => {
@@ -233,21 +230,20 @@ router.get("/applications/received", requireAuth, async (req, res) => {
         motivation,
         status,
         created_at,
-        team_posts (
+        team_posts!inner (
           id,
           title,
-          status
+          status,
+          user_id
         )
-      `
+        `
       )
       .eq("team_posts.user_id", userId)
       .order("created_at", { ascending: false });
 
     if (error) {
       console.error("Fetch received applications error:", error);
-      return res
-        .status(500)
-        .json({ error: "Failed to fetch applications for your team" });
+      return res.status(500).json({ error: "Failed to fetch applications for your team" });
     }
 
     return res.json(data || []);
@@ -283,7 +279,7 @@ router.get("/applications/sent", requireAuth, async (req, res) => {
           title,
           status
         )
-      `
+        `
       )
       .eq("applicant_id", userId)
       .order("created_at", { ascending: false });
@@ -302,8 +298,6 @@ router.get("/applications/sent", requireAuth, async (req, res) => {
 
 /* -----------------------------------------------------
    GET SINGLE APPLICATION DETAIL
-   GET /api/teams/applications/:id
-   (Used when clicking a card to see full details)
 ----------------------------------------------------- */
 router.get("/applications/:id", requireAuth, async (req, res) => {
   try {
@@ -329,22 +323,15 @@ router.get("/applications/:id", requireAuth, async (req, res) => {
           status,
           user_id
         )
-      `
+        `
       )
       .eq("id", appId)
       .maybeSingle();
 
-    if (error) {
-      console.error("Fetch application detail error:", error);
-      return res.status(500).json({ error: "Failed to fetch application" });
-    }
-    if (!data) {
-      return res.status(404).json({ error: "Application not found" });
-    }
+    if (!data) return res.status(404).json({ error: "Application not found" });
 
-    // Only applicant or team owner can see
     if (data.applicant_id !== userId && data.team_posts.user_id !== userId) {
-      return res.status(403).json({ error: "Not allowed to view this application" });
+      return res.status(403).json({ error: "Not allowed" });
     }
 
     return res.json(data);
@@ -355,8 +342,7 @@ router.get("/applications/:id", requireAuth, async (req, res) => {
 });
 
 /* -----------------------------------------------------
-   EDIT YOUR APPLICATION (while post is open)
-   PUT /api/teams/applications/:id
+   EDIT YOUR APPLICATION
 ----------------------------------------------------- */
 router.put("/applications/:id", requireAuth, async (req, res) => {
   try {
@@ -364,37 +350,17 @@ router.put("/applications/:id", requireAuth, async (req, res) => {
     const userId = req.user.id;
     const { name, skills, projects, motivation } = req.body;
 
-    const { data: existing, error: fetchError } = await supabaseAdmin
+    const { data: existing } = await supabaseAdmin
       .from("team_applications")
-      .select(
-        `
-        *,
-        team_posts (
-          id,
-          status
-        )
-      `
-      )
+      .select(`*, team_posts (id, status)`)
       .eq("id", appId)
       .maybeSingle();
 
-    if (fetchError) {
-      console.error("Fetch application for edit error:", fetchError);
-      return res.status(500).json({ error: "Failed to fetch application" });
-    }
-    if (!existing) {
-      return res.status(404).json({ error: "Application not found" });
-    }
-
-    if (existing.applicant_id !== userId) {
-      return res.status(403).json({ error: "Not allowed to edit this application" });
-    }
-
-    if (!existing.team_posts || existing.team_posts.status !== "open") {
-      return res
-        .status(400)
-        .json({ error: "Cannot edit application. Applications are closed." });
-    }
+    if (!existing) return res.status(404).json({ error: "Application not found" });
+    if (existing.applicant_id !== userId)
+      return res.status(403).json({ error: "Not allowed" });
+    if (existing.team_posts.status !== "open")
+      return res.status(400).json({ error: "Applications closed" });
 
     const safeSkills = Array.isArray(skills)
       ? skills.map((s) => String(s).trim()).filter(Boolean)
@@ -407,7 +373,7 @@ router.put("/applications/:id", requireAuth, async (req, res) => {
         }))
       : existing.projects;
 
-    const { data, error } = await supabaseAdmin
+    const { data } = await supabaseAdmin
       .from("team_applications")
       .update({
         name: name ?? existing.name,
@@ -418,11 +384,6 @@ router.put("/applications/:id", requireAuth, async (req, res) => {
       .eq("id", appId)
       .select("*")
       .single();
-
-    if (error) {
-      console.error("Update application error:", error);
-      return res.status(500).json({ error: "Failed to update application" });
-    }
 
     return res.json(data);
   } catch (err) {
