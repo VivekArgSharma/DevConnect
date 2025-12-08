@@ -1,37 +1,42 @@
-// DMButton.jsx
-import React from 'react';
-import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
-import { supabase } from '../supabaseClient'; // adapt path to your supabase client
+// src/components/DMButton.jsx
+import React from "react";
+import axios from "axios";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "../lib/supabaseClient"; // ✅ FIXED IMPORT
 
 export default function DMButton({ otherUserId }) {
   const navigate = useNavigate();
 
   async function handleDM() {
-    // get current user session to get access token
-    const session = supabase.auth.session();
-    if (!session) {
-      // redirect to login or show toast
-      alert('Please login to send a DM.');
+    // ✅ Correct Supabase v2 session API
+    const {
+      data: { session },
+      error,
+    } = await supabase.auth.getSession();
+
+    if (error || !session) {
+      alert("Please login to send a DM.");
       return;
     }
+
     try {
-      // call server endpoint to create / fetch chat
       const resp = await axios.post(
-        `${process.env.REACT_APP_CHAT_SERVER_URL || 'http://localhost:4000'}/chat/open`,
+        `${
+          import.meta.env.VITE_CHAT_SERVER_URL || "http://localhost:4000"
+        }/chat/open`,
         { other_user_id: otherUserId },
         {
           headers: {
-            Authorization: `Bearer ${session.access_token}`
-          }
+            Authorization: `Bearer ${session.access_token}`,
+          },
         }
       );
+
       const chatId = resp.data.chat_id;
-      // navigate to chat page
       navigate(`/chat/${chatId}`);
     } catch (err) {
-      console.error(err);
-      alert('Could not open DM. Try again.');
+      console.error("DM open failed:", err);
+      alert("Could not open DM. Try again.");
     }
   }
 

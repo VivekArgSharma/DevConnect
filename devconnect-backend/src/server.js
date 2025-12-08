@@ -6,6 +6,7 @@ import dotenv from 'dotenv';
 import userRoutes from './routes/userRoutes.js';
 import postRoutes from './routes/postRoutes.js';
 import commentRoutes from './routes/commentRoutes.js';
+import teamRoutes from './routes/teamRoutes.js';
 
 dotenv.config();
 
@@ -35,6 +36,7 @@ app.get('/', (req, res) => {
 app.use('/api', userRoutes);           // /api/me, /api/me/sync
 app.use('/api/posts', postRoutes);     // /api/posts, /api/posts/:id, /api/posts/mine, etc.
 app.use('/api/comments', commentRoutes); // /api/comments
+app.use('/api/teams', teamRoutes);
 
 app.listen(PORT, () => {
   console.log(`DevConnect backend listening on port ${PORT}`);

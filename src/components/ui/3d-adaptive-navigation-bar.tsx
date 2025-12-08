@@ -22,11 +22,16 @@ export const PillBase: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // ✅ ✅ ✅ TEAM FINDER ADDED HERE
   const navItems: NavItem[] = [
     { label: "Home", id: "home", path: "/" },
     { label: "Projects", id: "projects", path: "/projects" },
     { label: "Blogs", id: "blogs", path: "/blogs" },
     { label: "Post", id: "post", path: "/post" },
+
+    // ✅ NEW FEATURE
+    { label: "Teams", id: "teams", path: "/teams" },
+
     { label: "Profile", id: "profile", path: "/profile" },
     { label: "Chats", id: "chats", path: "/chats" },
   ];
@@ -52,7 +57,7 @@ export const PillBase: React.FC = () => {
     }
   }, [hovering]);
 
-  // ✅ ✅ ✅ THIS IS THE KEY FIX
+  // ✅ CHAT UNREAD FIX (already correct)
   useEffect(() => {
     async function loadUnread() {
       const { data } = await supabase.auth.getSession();
@@ -78,10 +83,7 @@ export const PillBase: React.FC = () => {
       }
     }
 
-    // ✅ initial load
     loadUnread();
-
-    // ✅ live update when a chat is opened
     window.addEventListener("chat-read", loadUnread);
 
     return () => {
@@ -125,6 +127,7 @@ export const PillBase: React.FC = () => {
               className="font-bold text-gray-900 relative"
             >
               {activeItem.label}
+
               {activeItem.id === "chats" && unreadTotal > 0 && (
                 <span className="absolute -top-2 -right-3 bg-red-600 text-white text-[10px] rounded-full px-1.5 py-0.5">
                   {unreadTotal}
@@ -154,6 +157,7 @@ export const PillBase: React.FC = () => {
                 }}
               >
                 {item.label}
+
                 {item.id === "chats" && unreadTotal > 0 && (
                   <span className="absolute -top-2 -right-3 bg-red-600 text-white text-[10px] rounded-full px-1.5 py-0.5">
                     {unreadTotal}

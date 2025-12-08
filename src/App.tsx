@@ -15,6 +15,7 @@ import ProjectDetails from "./pages/ProjectDetails";
 import BlogDetails from "./pages/BlogDetails";
 import PublicProfile from "./pages/PublicProfile";
 import EditProfile from "./pages/EditProfile";
+import TeamFinder from "./pages/TeamFinder";
 
 // ✅ CHAT PAGES
 import ChatPage from "./pages/ChatPage";
@@ -52,6 +53,9 @@ export default function App() {
               {/* ✅ CHAT ROUTES */}
               <Route path="/chats" element={<Chats />} />
               <Route path="/chat/:chatId" element={<ChatPage />} />
+
+              <Route path="/teams" element={<TeamFinder />} />
+
 
               <Route path="*" element={<NotFound />} />
             </Routes>
