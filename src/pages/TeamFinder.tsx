@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import TagInput from "@/components/TagInput";
 // If your DMButton path is different, adjust:
-import DMButton from "@/components/DMButton"; 
+import DMButton from "@/components/DMButton";
 
 const API_URL =
   import.meta.env.VITE_API_URL?.endsWith("/api")
@@ -61,7 +61,9 @@ export default function TeamFinder() {
   const [activeTab, setActiveTab] = useState<ActiveTab>("find");
 
   const [teamPosts, setTeamPosts] = useState<TeamPost[]>([]);
-  const [receivedApplications, setReceivedApplications] = useState<ReceivedApplication[]>([]);
+  const [receivedApplications, setReceivedApplications] = useState<
+    ReceivedApplication[]
+  >([]);
   const [sentApplications, setSentApplications] = useState<SentApplication[]>([]);
 
   const [loadingPosts, setLoadingPosts] = useState(false);
@@ -90,8 +92,10 @@ export default function TeamFinder() {
   ]);
   const [applyMotivation, setApplyMotivation] = useState("");
 
-  const [selectedReceivedApp, setSelectedReceivedApp] = useState<ReceivedApplication | null>(null);
-  const [editingApplication, setEditingApplication] = useState<SentApplication | null>(null);
+  const [selectedReceivedApp, setSelectedReceivedApp] =
+    useState<ReceivedApplication | null>(null);
+  const [editingApplication, setEditingApplication] =
+    useState<SentApplication | null>(null);
   const [editLoading, setEditLoading] = useState(false);
   const [editProjects, setEditProjects] = useState<ApplicationProject[]>([]);
   const [editSkills, setEditSkills] = useState<string[]>([]);
@@ -259,7 +263,11 @@ export default function TeamFinder() {
     setApplyProjects((prev) => [...prev, { link: "", description: "" }]);
   }
 
-  function updateApplyProject(idx: number, field: "link" | "description", value: string) {
+  function updateApplyProject(
+    idx: number,
+    field: "link" | "description",
+    value: string
+  ) {
     setApplyProjects((prev) =>
       prev.map((p, i) => (i === idx ? { ...p, [field]: value } : p))
     );
@@ -312,7 +320,9 @@ export default function TeamFinder() {
     setEditName(app.name || "");
     setEditSkills(app.skills || []);
     setEditProjects(
-      (app.projects && app.projects.length ? app.projects : [{ link: "", description: "" }]) as ApplicationProject[]
+      (app.projects && app.projects.length
+        ? app.projects
+        : [{ link: "", description: "" }]) as ApplicationProject[]
     );
     setEditMotivation(app.motivation || "");
   }
@@ -321,7 +331,11 @@ export default function TeamFinder() {
     setEditProjects((prev) => [...prev, { link: "", description: "" }]);
   }
 
-  function updateEditProject(idx: number, field: "link" | "description", value: string) {
+  function updateEditProject(
+    idx: number,
+    field: "link" | "description",
+    value: string
+  ) {
     setEditProjects((prev) =>
       prev.map((p, i) => (i === idx ? { ...p, [field]: value } : p))
     );
@@ -361,6 +375,42 @@ export default function TeamFinder() {
     }
   }
 
+  /* ------------------- ✅ DELETE APPLICATION (BOTH SIDES) ------------------- */
+
+  async function handleDeleteApplication(appId: string) {
+    if (!accessToken) return;
+    const ok = window.confirm(
+      "Are you sure you want to delete this application? This cannot be undone."
+    );
+    if (!ok) return;
+
+    try {
+      await axios.delete(`${API_URL}/teams/applications/${appId}`, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+
+      // Remove from "your applications"
+      setSentApplications((prev) => prev.filter((a) => a.id !== appId));
+      // Remove from "applications for your team"
+      setReceivedApplications((prev) => prev.filter((a) => a.id !== appId));
+
+      if (selectedReceivedApp?.id === appId) {
+        setSelectedReceivedApp(null);
+      }
+      if (editingApplication?.id === appId) {
+        setEditingApplication(null);
+      }
+    } catch (err: any) {
+      console.error("Failed to delete application", err);
+      const msg =
+        err?.response?.data?.error ||
+        "Failed to delete application. Check console for details.";
+      alert(msg);
+    }
+  }
+
   /* ------------------- RENDER HELPERS ------------------- */
 
   function renderTeamPosts() {
@@ -369,7 +419,10 @@ export default function TeamFinder() {
         <div className="flex items-center justify-between gap-4 mb-4">
           <h2 className="font-semibold text-lg">Find Teammates</h2>
           {user && (
-            <Button variant="outline" onClick={() => setShowCreatePostForm((s) => !s)}>
+            <Button
+              variant="outline"
+              onClick={() => setShowCreatePostForm((s) => !s)}
+            >
               {showCreatePostForm ? "Cancel" : "Create Team Post"}
             </Button>
           )}
@@ -391,38 +444,50 @@ export default function TeamFinder() {
             <Textarea
               placeholder="Short description of what you're building"
               value={newPost.description}
-              onChange={(e) => setNewPost((p) => ({ ...p, description: e.target.value }))}
+              onChange={(e) =>
+                setNewPost((p) => ({ ...p, description: e.target.value }))
+              }
             />
 
             <Input
               placeholder="Image URL (hackathon banner / project image)"
               value={newPost.image_url}
-              onChange={(e) => setNewPost((p) => ({ ...p, image_url: e.target.value }))}
+              onChange={(e) =>
+                setNewPost((p) => ({ ...p, image_url: e.target.value }))
+              }
             />
 
             <Input
               type="number"
               placeholder="Current team members (e.g. 2)"
               value={newPost.current_members}
-              onChange={(e) => setNewPost((p) => ({ ...p, current_members: e.target.value }))}
+              onChange={(e) =>
+                setNewPost((p) => ({ ...p, current_members: e.target.value }))
+              }
             />
 
             <Textarea
               placeholder="Requirements (what roles/skills you need)"
               value={newPost.requirements}
-              onChange={(e) => setNewPost((p) => ({ ...p, requirements: e.target.value }))}
+              onChange={(e) =>
+                setNewPost((p) => ({ ...p, requirements: e.target.value }))
+              }
             />
 
             <Input
               placeholder="Current project live link (optional)"
               value={newPost.hackathon_link}
-              onChange={(e) => setNewPost((p) => ({ ...p, hackathon_link: e.target.value }))}
+              onChange={(e) =>
+                setNewPost((p) => ({ ...p, hackathon_link: e.target.value }))
+              }
             />
 
             <Input
               placeholder="GitHub repo link (optional)"
               value={newPost.github_link}
-              onChange={(e) => setNewPost((p) => ({ ...p, github_link: e.target.value }))}
+              onChange={(e) =>
+                setNewPost((p) => ({ ...p, github_link: e.target.value }))
+              }
             />
 
             <Button type="submit" disabled={createPostLoading}>
@@ -530,7 +595,11 @@ export default function TeamFinder() {
 
   function renderReceivedApplications() {
     if (!user) {
-      return <p className="text-sm text-gray-500">Login to see applications for your team.</p>;
+      return (
+        <p className="text-sm text-gray-500">
+          Login to see applications for your team.
+        </p>
+      );
     }
 
     return (
@@ -588,69 +657,83 @@ export default function TeamFinder() {
         <div className="flex-1">
           {selectedReceivedApp ? (
             <div className="border rounded-xl p-4 bg-white/80">
-              <h3 className="font-semibold text-base mb-1">{selectedReceivedApp.name}</h3>
+              <h3 className="font-semibold text-base mb-1">
+                {selectedReceivedApp.name}
+              </h3>
               <p className="text-xs text-gray-500 mb-3">
                 Applied for: {selectedReceivedApp.team_posts?.title || "Unknown post"}
               </p>
 
-              {selectedReceivedApp.skills && selectedReceivedApp.skills.length > 0 && (
-                <div className="mb-3">
-                  <p className="text-xs font-semibold mb-1">Skills</p>
-                  <div className="flex flex-wrap gap-1">
-                    {selectedReceivedApp.skills.map((s) => (
-                      <span
-                        key={s}
-                        className="text-[10px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-700"
-                      >
-                        {s}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {selectedReceivedApp.projects && selectedReceivedApp.projects.length > 0 && (
-                <div className="mb-3">
-                  <p className="text-xs font-semibold mb-1">Projects</p>
-                  <div className="space-y-2">
-                    {selectedReceivedApp.projects.map((p, idx) => (
-                      <div key={idx} className="border rounded-lg p-2 text-xs">
-                        <a
-                          href={p.link}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-blue-600 font-medium break-all"
+              {selectedReceivedApp.skills &&
+                selectedReceivedApp.skills.length > 0 && (
+                  <div className="mb-3">
+                    <p className="text-xs font-semibold mb-1">Skills</p>
+                    <div className="flex flex-wrap gap-1">
+                      {selectedReceivedApp.skills.map((s) => (
+                        <span
+                          key={s}
+                          className="text-[10px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-700"
                         >
-                          {p.link}
-                        </a>
-                        {p.description && (
-                          <p className="mt-1 text-gray-700 whitespace-pre-line">
-                            {p.description}
-                          </p>
-                        )}
-                      </div>
-                    ))}
+                          {s}
+                        </span>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
+
+              {selectedReceivedApp.projects &&
+                selectedReceivedApp.projects.length > 0 && (
+                  <div className="mb-3">
+                    <p className="text-xs font-semibold mb-1">Projects</p>
+                    <div className="space-y-2">
+                      {selectedReceivedApp.projects.map((p, idx) => (
+                        <div key={idx} className="border rounded-lg p-2 text-xs">
+                          <a
+                            href={p.link}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-blue-600 font-medium break-all"
+                          >
+                            {p.link}
+                          </a>
+                          {p.description && (
+                            <p className="mt-1 text-gray-700 whitespace-pre-line">
+                              {p.description}
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
               {selectedReceivedApp.motivation && (
                 <div className="mb-4">
-                  <p className="text-xs font-semibold mb-1">Why they think they fit</p>
+                  <p className="text-xs font-semibold mb-1">
+                    Why they think they fit
+                  </p>
                   <p className="text-xs text-gray-800 whitespace-pre-line">
                     {selectedReceivedApp.motivation}
                   </p>
                 </div>
               )}
 
-              {/* DM button using existing system */}
-              <div className="flex justify-end">
+              {/* DM + Review Done */}
+              <div className="flex items-center justify-between mt-4">
                 <DMButton otherUserId={selectedReceivedApp.applicant_id} />
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleDeleteApplication(selectedReceivedApp.id)}
+                >
+                  Review done
+                </Button>
               </div>
             </div>
           ) : (
             <p className="text-sm text-gray-500 mt-6">
-              Click on an application on the left to view full details and DM the applicant.
+              Click on an application on the left to view full details, DM the
+              applicant, or mark as reviewed.
             </p>
           )}
         </div>
@@ -660,7 +743,9 @@ export default function TeamFinder() {
 
   function renderSentApplications() {
     if (!user) {
-      return <p className="text-sm text-gray-500">Login to see your applications.</p>;
+      return (
+        <p className="text-sm text-gray-500">Login to see your applications.</p>
+      );
     }
 
     return (
@@ -670,7 +755,9 @@ export default function TeamFinder() {
           {loadingSent ? (
             <p>Loading your applications...</p>
           ) : sentApplications.length === 0 ? (
-            <p className="text-sm text-gray-500">You haven't applied to any teams yet.</p>
+            <p className="text-sm text-gray-500">
+              You haven't applied to any teams yet.
+            </p>
           ) : (
             <div className="space-y-3">
               {sentApplications.map((app) => {
@@ -715,7 +802,7 @@ export default function TeamFinder() {
                       </p>
                     )}
 
-                    <div className="flex justify-end mt-1">
+                    <div className="flex justify-end mt-1 gap-2">
                       <Button
                         size="sm"
                         variant="outline"
@@ -724,6 +811,15 @@ export default function TeamFinder() {
                       >
                         {closed ? "Cannot edit (closed)" : "Edit"}
                       </Button>
+                      {closed && (
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => handleDeleteApplication(app.id)}
+                        >
+                          Delete
+                        </Button>
+                      )}
                     </div>
                   </div>
                 );
@@ -759,7 +855,10 @@ export default function TeamFinder() {
                 <p className="text-xs font-semibold mb-1">Your projects</p>
                 <div className="space-y-2">
                   {editProjects.map((p, idx) => (
-                    <div key={idx} className="flex flex-col gap-1 border rounded-lg p-2">
+                    <div
+                      key={idx}
+                      className="flex flex-col gap-1 border rounded-lg p-2"
+                    >
                       <Input
                         placeholder="Project link (GitHub, deployed app, etc.)"
                         value={p.link}

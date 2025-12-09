@@ -70,7 +70,6 @@ router.post("/posts", requireAuth, async (req, res) => {
 
 /* -----------------------------------------------------
    GET ALL OPEN TEAM POSTS
-   GET /api/teams/posts
 ----------------------------------------------------- */
 router.get("/posts", async (req, res) => {
   try {
@@ -80,315 +79,195 @@ router.get("/posts", async (req, res) => {
       .eq("status", "open")
       .order("created_at", { ascending: false });
 
-    if (error) {
-      console.error("Fetch team posts error:", error);
-      return res.status(500).json({ error: "Failed to fetch team posts" });
-    }
-
+    if (error) return res.status(500).json({ error: "Failed to fetch team posts" });
     return res.json(data || []);
   } catch (err) {
-    console.error("Unexpected fetch team posts error:", err);
     return res.status(500).json({ error: "Internal server error" });
   }
 });
 
 /* -----------------------------------------------------
    GET SINGLE TEAM POST
-   GET /api/teams/posts/:id
 ----------------------------------------------------- */
 router.get("/posts/:id", async (req, res) => {
-  try {
-    const postId = req.params.id;
-    const post = await getTeamPostById(postId);
-
-    if (!post) {
-      return res.status(404).json({ error: "Team post not found" });
-    }
-
-    return res.json(post);
-  } catch (err) {
-    console.error("Fetch single team post error:", err);
-    return res.status(500).json({ error: "Internal server error" });
-  }
+  const post = await getTeamPostById(req.params.id);
+  if (!post) return res.status(404).json({ error: "Team post not found" });
+  res.json(post);
 });
 
 /* -----------------------------------------------------
-   CLOSE APPLICATIONS FOR A POST
-   POST /api/teams/posts/:id/close
+   CLOSE APPLICATIONS
 ----------------------------------------------------- */
 router.post("/posts/:id/close", requireAuth, async (req, res) => {
-  try {
-    const postId = req.params.id;
-    const userId = req.user.id;
+  const post = await getTeamPostById(req.params.id);
+  if (!post) return res.status(404).json({ error: "Team post not found" });
 
-    const post = await getTeamPostById(postId);
-    if (!post) {
-      return res.status(404).json({ error: "Team post not found" });
-    }
+  if (post.user_id !== req.user.id)
+    return res.status(403).json({ error: "Not allowed" });
 
-    if (post.user_id !== userId) {
-      return res.status(403).json({ error: "Not allowed to close this post" });
-    }
+  const { data, error } = await supabaseAdmin
+    .from("team_posts")
+    .update({ status: "closed" })
+    .eq("id", post.id)
+    .select("*")
+    .single();
 
-    if (post.status === "closed") {
-      return res.json(post);
-    }
-
-    const { data, error } = await supabaseAdmin
-      .from("team_posts")
-      .update({ status: "closed" })
-      .eq("id", postId)
-      .select("*")
-      .single();
-
-    if (error) {
-      console.error("Close team post error:", error);
-      return res.status(500).json({ error: "Failed to close team post" });
-    }
-
-    return res.json(data);
-  } catch (err) {
-    console.error("Unexpected close team post error:", err);
-    return res.status(500).json({ error: "Internal server error" });
-  }
+  if (error) return res.status(500).json({ error: "Failed to close post" });
+  res.json(data);
 });
 
 /* -----------------------------------------------------
-   APPLY TO A TEAM POST
-   POST /api/teams/posts/:id/apply
+   APPLY TO TEAM
 ----------------------------------------------------- */
 router.post("/posts/:id/apply", requireAuth, async (req, res) => {
-  try {
-    const userId = req.user.id;
-    const postId = req.params.id;
-    const { name, skills, projects, motivation } = req.body;
+  const post = await getTeamPostById(req.params.id);
+  if (!post || post.status !== "open")
+    return res.status(400).json({ error: "Applications closed" });
 
-    if (!name) {
-      return res.status(400).json({ error: "Name is required" });
-    }
+  const { data, error } = await supabaseAdmin
+    .from("team_applications")
+    .insert({
+      team_post_id: post.id,
+      applicant_id: req.user.id,
+      name: req.body.name,
+      skills: req.body.skills || [],
+      projects: req.body.projects || [],
+      motivation: req.body.motivation || null,
+      status: "pending",
+    })
+    .select("*")
+    .single();
 
-    const post = await getTeamPostById(postId);
-    if (!post || post.status !== "open") {
-      return res.status(400).json({ error: "Applications are closed for this post" });
-    }
-
-    const safeSkills = Array.isArray(skills)
-      ? skills.map((s) => String(s).trim()).filter(Boolean)
-      : [];
-
-    const safeProjects = Array.isArray(projects)
-      ? projects.map((p) => ({
-          link: String(p.link || "").trim(),
-          description: String(p.description || "").trim(),
-        }))
-      : [];
-
-    const { data, error } = await supabaseAdmin
-      .from("team_applications")
-      .insert({
-        team_post_id: postId,
-        applicant_id: userId,
-        name,
-        skills: safeSkills,
-        projects: safeProjects,
-        motivation: motivation || null,
-        status: "pending",
-      })
-      .select("*")
-      .single();
-
-    if (error) {
-      console.error("Create team application error:", error);
-      return res.status(500).json({ error: "Failed to create application" });
-    }
-
-    return res.status(201).json(data);
-  } catch (err) {
-    console.error("Unexpected apply error:", err);
-    return res.status(500).json({ error: "Internal server error" });
-  }
+  if (error) return res.status(500).json({ error: "Failed to apply" });
+  res.status(201).json(data);
 });
 
 /* -----------------------------------------------------
-   ✅ ✅ ✅ FIXED: GET APPLICATIONS FOR YOUR TEAM POSTS
-   GET /api/teams/applications/received
+   ✅ GET APPLICATIONS FOR YOUR TEAM
 ----------------------------------------------------- */
 router.get("/applications/received", requireAuth, async (req, res) => {
-  try {
-    const userId = req.user.id;
+  const { data, error } = await supabaseAdmin
+    .from("team_applications")
+    .select(
+      `
+      *,
+      team_posts!inner (id, title, status, user_id)
+    `
+    )
+    .eq("team_posts.user_id", req.user.id)
+    .order("created_at", { ascending: false });
 
-    const { data, error } = await supabaseAdmin
-      .from("team_applications")
-      .select(
-        `
-        id,
-        team_post_id,
-        applicant_id,
-        name,
-        skills,
-        projects,
-        motivation,
-        status,
-        created_at,
-        team_posts!inner (
-          id,
-          title,
-          status,
-          user_id
-        )
-        `
-      )
-      .eq("team_posts.user_id", userId)
-      .order("created_at", { ascending: false });
-
-    if (error) {
-      console.error("Fetch received applications error:", error);
-      return res.status(500).json({ error: "Failed to fetch applications for your team" });
-    }
-
-    return res.json(data || []);
-  } catch (err) {
-    console.error("Unexpected fetch received applications error:", err);
-    return res.status(500).json({ error: "Internal server error" });
-  }
+  if (error) return res.status(500).json({ error: "Failed to fetch received apps" });
+  res.json(data || []);
 });
 
 /* -----------------------------------------------------
-   GET APPLICATIONS YOU HAVE SENT
-   GET /api/teams/applications/sent
+   ✅ GET YOUR SENT APPLICATIONS
 ----------------------------------------------------- */
 router.get("/applications/sent", requireAuth, async (req, res) => {
-  try {
-    const userId = req.user.id;
+  const { data, error } = await supabaseAdmin
+    .from("team_applications")
+    .select(
+      `
+      *,
+      team_posts (id, title, status)
+    `
+    )
+    .eq("applicant_id", req.user.id)
+    .order("created_at", { ascending: false });
 
-    const { data, error } = await supabaseAdmin
-      .from("team_applications")
-      .select(
-        `
-        id,
-        team_post_id,
-        applicant_id,
-        name,
-        skills,
-        projects,
-        motivation,
-        status,
-        created_at,
-        team_posts (
-          id,
-          title,
-          status
-        )
-        `
-      )
-      .eq("applicant_id", userId)
-      .order("created_at", { ascending: false });
-
-    if (error) {
-      console.error("Fetch sent applications error:", error);
-      return res.status(500).json({ error: "Failed to fetch your applications" });
-    }
-
-    return res.json(data || []);
-  } catch (err) {
-    console.error("Unexpected fetch sent applications error:", err);
-    return res.status(500).json({ error: "Internal server error" });
-  }
+  if (error) return res.status(500).json({ error: "Failed to fetch sent apps" });
+  res.json(data || []);
 });
 
 /* -----------------------------------------------------
-   GET SINGLE APPLICATION DETAIL
+   GET SINGLE APPLICATION
 ----------------------------------------------------- */
 router.get("/applications/:id", requireAuth, async (req, res) => {
-  try {
-    const appId = req.params.id;
-    const userId = req.user.id;
+  const { data } = await supabaseAdmin
+    .from("team_applications")
+    .select(`*, team_posts (id, title, status, user_id)`)
+    .eq("id", req.params.id)
+    .maybeSingle();
 
-    const { data, error } = await supabaseAdmin
-      .from("team_applications")
-      .select(
-        `
-        id,
-        team_post_id,
-        applicant_id,
-        name,
-        skills,
-        projects,
-        motivation,
-        status,
-        created_at,
-        team_posts (
-          id,
-          title,
-          status,
-          user_id
-        )
-        `
-      )
-      .eq("id", appId)
-      .maybeSingle();
+  if (!data) return res.status(404).json({ error: "Application not found" });
 
-    if (!data) return res.status(404).json({ error: "Application not found" });
+  if (
+    data.applicant_id !== req.user.id &&
+    data.team_posts.user_id !== req.user.id
+  )
+    return res.status(403).json({ error: "Not allowed" });
 
-    if (data.applicant_id !== userId && data.team_posts.user_id !== userId) {
-      return res.status(403).json({ error: "Not allowed" });
-    }
-
-    return res.json(data);
-  } catch (err) {
-    console.error("Unexpected fetch application detail error:", err);
-    return res.status(500).json({ error: "Internal server error" });
-  }
+  res.json(data);
 });
 
 /* -----------------------------------------------------
-   EDIT YOUR APPLICATION
+   EDIT APPLICATION (ONLY IF OPEN)
 ----------------------------------------------------- */
 router.put("/applications/:id", requireAuth, async (req, res) => {
-  try {
-    const appId = req.params.id;
-    const userId = req.user.id;
-    const { name, skills, projects, motivation } = req.body;
+  const { data: existing } = await supabaseAdmin
+    .from("team_applications")
+    .select(`*, team_posts (status)`)
+    .eq("id", req.params.id)
+    .maybeSingle();
 
-    const { data: existing } = await supabaseAdmin
+  if (!existing) return res.status(404).json({ error: "Not found" });
+  if (existing.applicant_id !== req.user.id)
+    return res.status(403).json({ error: "Forbidden" });
+  if (existing.team_posts.status !== "open")
+    return res.status(400).json({ error: "Applications closed" });
+
+  const { data, error } = await supabaseAdmin
+    .from("team_applications")
+    .update({
+      name: req.body.name,
+      skills: req.body.skills,
+      projects: req.body.projects,
+      motivation: req.body.motivation,
+    })
+    .eq("id", req.params.id)
+    .select("*")
+    .single();
+
+  if (error) return res.status(500).json({ error: "Update failed" });
+  res.json(data);
+});
+
+/* -----------------------------------------------------
+   ✅ ✅ ✅ DELETE APPLICATION (FINAL MISSING PIECE)
+   - Applicant can delete their own application
+   - Team owner can mark as "Review Done"
+----------------------------------------------------- */
+router.delete("/applications/:id", requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const appId = req.params.id;
+
+    const { data: app } = await supabaseAdmin
       .from("team_applications")
-      .select(`*, team_posts (id, status)`)
+      .select(`*, team_posts (user_id)`)
       .eq("id", appId)
       .maybeSingle();
 
-    if (!existing) return res.status(404).json({ error: "Application not found" });
-    if (existing.applicant_id !== userId)
-      return res.status(403).json({ error: "Not allowed" });
-    if (existing.team_posts.status !== "open")
-      return res.status(400).json({ error: "Applications closed" });
+    if (!app) return res.status(404).json({ error: "Application not found" });
 
-    const safeSkills = Array.isArray(skills)
-      ? skills.map((s) => String(s).trim()).filter(Boolean)
-      : existing.skills;
+    const isApplicant = app.applicant_id === userId;
+    const isTeamOwner = app.team_posts.user_id === userId;
 
-    const safeProjects = Array.isArray(projects)
-      ? projects.map((p) => ({
-          link: String(p.link || "").trim(),
-          description: String(p.description || "").trim(),
-        }))
-      : existing.projects;
+    if (!isApplicant && !isTeamOwner)
+      return res.status(403).json({ error: "Not authorized to delete" });
 
-    const { data } = await supabaseAdmin
+    const { error } = await supabaseAdmin
       .from("team_applications")
-      .update({
-        name: name ?? existing.name,
-        skills: safeSkills,
-        projects: safeProjects,
-        motivation: motivation ?? existing.motivation,
-      })
-      .eq("id", appId)
-      .select("*")
-      .single();
+      .delete()
+      .eq("id", appId);
 
-    return res.json(data);
+    if (error) return res.status(500).json({ error: "Delete failed" });
+
+    res.json({ success: true });
   } catch (err) {
-    console.error("Unexpected update application error:", err);
-    return res.status(500).json({ error: "Internal server error" });
+    console.error("Delete application error:", err);
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 
