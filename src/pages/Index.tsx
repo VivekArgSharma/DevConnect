@@ -25,7 +25,7 @@ const Index = () => {
   const { data: topProjects = [], refetch: refetchProjects } = useQuery({
     queryKey: ["top-projects"],
     queryFn: async () => {
-      const res = await fetch(`${API_URL}/api/posts?type=project`);
+      const res = await fetch(`${API_URL}/posts?type=project`);
       const data = await res.json();
 
       return data
@@ -40,7 +40,7 @@ const Index = () => {
   const { data: topBlogs = [], refetch: refetchBlogs } = useQuery({
     queryKey: ["top-blogs"],
     queryFn: async () => {
-      const res = await fetch(`${API_URL}/api/posts?type=blog`);
+      const res = await fetch(`${API_URL}/posts?type=blog`);
       const data = await res.json();
 
       return data

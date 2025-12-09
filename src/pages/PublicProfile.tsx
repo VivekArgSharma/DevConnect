@@ -1,5 +1,3 @@
-console.log("CHAT SERVER ENV:", import.meta.env.VITE_CHAT_SERVER_URL);
-
 import { useParams, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
@@ -25,7 +23,7 @@ export default function PublicProfile() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   // ------------------------------
-  // LOAD CURRENT USER SESSION PROPERLY
+  // LOAD CURRENT USER SESSION
   // ------------------------------
   useEffect(() => {
     async function loadSession() {
@@ -67,13 +65,11 @@ export default function PublicProfile() {
   }
 
   // ------------------------------
-  // DM HANDLER
+  // DM HANDLER (✅ SECURE)
   // ------------------------------
   async function handleDM() {
     const sessionRes = await supabase.auth.getSession();
     const token = sessionRes.data.session?.access_token;
-
-    console.log("FRONTEND TOKEN:", token); // Debug log
 
     if (!token) {
       alert("Please sign in to send a message.");
@@ -81,11 +77,6 @@ export default function PublicProfile() {
     }
 
     try {
-      console.log(
-        "Calling:",
-        `${import.meta.env.VITE_CHAT_SERVER_URL}/chat/open`
-      );
-
       const resp = await axios.post(
         `${import.meta.env.VITE_CHAT_SERVER_URL}/chat/open`,
         { other_user_id: userId },
@@ -107,7 +98,7 @@ export default function PublicProfile() {
   return (
     <div className="p-6 max-w-4xl mx-auto">
       <div className="bg-white p-6 rounded-lg shadow-sm">
-        
+
         {/* HEADER */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -126,7 +117,6 @@ export default function PublicProfile() {
           <div className="flex gap-3">
             {userId && <FollowButton targetUserId={userId} />}
 
-            {/* Show DM button only if viewing someone else's profile */}
             {currentUserId && currentUserId !== userId && (
               <button
                 onClick={handleDM}

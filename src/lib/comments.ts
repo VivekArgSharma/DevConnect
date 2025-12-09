@@ -5,10 +5,12 @@ const API_URL = import.meta.env.VITE_API_URL as string;
  * Fetch comments for a post
  */
 export async function fetchComments(postId: string) {
-  const res = await fetch(`${API_URL}/api/comments?post_id=${encodeURIComponent(postId)}`);
+  const res = await fetch(
+    `${API_URL}/comments?post_id=${encodeURIComponent(postId)}`
+  );
   if (!res.ok) {
     const json = await res.json().catch(() => ({}));
-    throw new Error(json.error || 'Failed to fetch comments');
+    throw new Error(json.error || "Failed to fetch comments");
   }
   return res.json();
 }
@@ -31,7 +33,7 @@ export async function createComment(
   const body: any = { post_id: postId, content };
   if (parentId) body.parent_id = parentId;
 
-  const res = await fetch(`${apiUrl}/api/comments`, {
+  const res = await fetch(`${apiUrl}/comments`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -51,8 +53,12 @@ export async function createComment(
 /**
  * Delete a comment (must be owner). Requires accessToken.
  */
-export async function deleteComment(commentId: string, accessToken: string, apiUrl: string = API_URL) {
-  const res = await fetch(`${apiUrl}/api/comments/${commentId}`, {
+export async function deleteComment(
+  commentId: string,
+  accessToken: string,
+  apiUrl: string = API_URL
+) {
+  const res = await fetch(`${apiUrl}/comments/${commentId}`, {
     method: "DELETE",
     headers: {
       Authorization: `Bearer ${accessToken}`,
@@ -60,7 +66,7 @@ export async function deleteComment(commentId: string, accessToken: string, apiU
   });
   if (!res.ok) {
     const json = await res.json().catch(() => ({}));
-    throw new Error(json.error || 'Failed to delete comment');
+    throw new Error(json.error || "Failed to delete comment");
   }
   return res.json();
 }

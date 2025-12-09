@@ -24,7 +24,7 @@ export default function ProjectDetails() {
   const { data: post } = useQuery({
     queryKey: ["project", id],
     queryFn: async () => {
-      const res = await fetch(`${API_URL}/api/posts/${id}`);
+      const res = await fetch(`${API_URL}/posts/${id}`);
       if (!res.ok) throw new Error("Failed to fetch");
       return res.json();
     },
