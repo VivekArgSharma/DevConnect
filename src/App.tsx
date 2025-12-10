@@ -16,6 +16,7 @@ import BlogDetails from "./pages/BlogDetails";
 import PublicProfile from "./pages/PublicProfile";
 import EditProfile from "./pages/EditProfile";
 import TeamFinder from "./pages/TeamFinder";
+import StarredPosts from "./pages/StarredPosts";
 
 // ✅ CHAT PAGES
 import ChatPage from "./pages/ChatPage";
@@ -43,6 +44,7 @@ export default function App() {
 
               {/* Current User Profile */}
               <Route path="/profile" element={<Profile />} />
+              <Route path="/starred" element={<StarredPosts />} />
 
               {/* Edit Profile */}
               <Route path="/edit-profile" element={<EditProfile />} />

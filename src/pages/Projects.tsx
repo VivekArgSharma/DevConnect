@@ -10,39 +10,57 @@ import { TagsFilter } from "@/components/TagsFilter";
 import { fetchPostsByTags } from "@/lib/posts";
 import { upvotePost } from "@/lib/upvote";
 import { useAuth } from "@/contexts/AuthContext";
+import { fetchStarredPostIds, toggleStar } from "@/lib/stars";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
 export default function Projects() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { accessToken } = useAuth();
+  const { user, accessToken } = (useAuth() as any) || {};
 
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
+  // Fetch projects
   const {
     data: posts = [],
     isLoading,
   } = useQuery({
     queryKey: ["projects", selectedTags],
-    queryFn: async () => {
-      const data = await fetchPostsByTags("project", selectedTags);
-      return data || [];
-    },
+    queryFn: () => fetchPostsByTags("project", selectedTags),
   });
 
+  // Fetch starred IDs for current user
+  const { data: starredIds = [] } = useQuery({
+    queryKey: ["starred-ids"],
+    queryFn: () =>
+      user ? fetchStarredPostIds(user.id) : Promise.resolve<string[]>([]),
+    enabled: !!user,
+  });
+
+  const handleToggleStar = async (postId: string) => {
+    if (!user) return;
+    await toggleStar(postId, user.id);
+    // Refresh star info across pages
+    queryClient.invalidateQueries({ queryKey: ["starred-ids"] });
+  };
+
+  const handleUpvote = async (postId: string) => {
+    if (!accessToken) return;
+    await upvotePost(postId, accessToken, API_URL);
+    queryClient.invalidateQueries({ queryKey: ["projects"] });
+  };
+
   return (
-    <div className="max-w-6xl mx-auto py-10 space-y-8 px-4">
-      <h1 className="text-3xl font-bold">All Projects</h1>
+    <div className="p-6 space-y-6">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <h1 className="text-2xl font-bold">Projects</h1>
 
-      {/* TAG FILTER */}
-      <div className="my-4">
         <TagsFilter
-  selected={selectedTags}
-  onChange={setSelectedTags}
-  type="project"
-/>
-
+          selected={selectedTags}
+          onChange={setSelectedTags}
+          type="project"
+        />
       </div>
 
       {/* PROJECT GRID */}
@@ -50,7 +68,7 @@ export default function Projects() {
         {isLoading && <p>Loading projects…</p>}
         {!isLoading && posts.length === 0 && <p>No projects found</p>}
 
-        {posts.map((post) => (
+        {posts.map((post: any) => (
           <ProjectCard
             key={post.id}
             image={post.cover_image_url}
@@ -60,10 +78,9 @@ export default function Projects() {
             description={post.short_description}
             likes_count={post.likes_count}
             onClick={() => navigate(`/projects/${post.id}`)}
-            onUpvote={async () => {
-              await upvotePost(post.id, accessToken, API_URL);
-              queryClient.invalidateQueries({ queryKey: ["projects"] });
-            }}
+            onUpvote={() => handleUpvote(post.id)}
+            isStarred={user ? starredIds.includes(post.id) : false}
+            onToggleStar={() => handleToggleStar(post.id)}
           />
         ))}
       </div>

@@ -86,8 +86,19 @@ export default function Profile() {
           </div>
         </div>
 
-        <div className="flex gap-3">
-          <Button onClick={() => navigate("/edit-profile")}>Edit Profile</Button>
+        <div className="flex gap-3 flex-wrap">
+          <Button onClick={() => navigate("/edit-profile")}>
+            Edit Profile
+          </Button>
+
+          {/* ⭐ STARRED POSTS BUTTON (PRIVATE TO OWN PROFILE) */}
+          <Button
+            variant="outline"
+            onClick={() => navigate("/starred")}
+          >
+            ⭐ Starred Posts
+          </Button>
+
           <Button
             variant="destructive"
             onClick={async () => {
@@ -143,7 +154,9 @@ export default function Profile() {
         <h2 className="text-xl font-bold mb-4">My Projects</h2>
 
         {myProjects.length === 0 ? (
-          <p className="text-gray-500">You have not posted any projects yet.</p>
+          <p className="text-gray-500">
+            You have not posted any projects yet.
+          </p>
         ) : (
           <div className="grid md:grid-cols-2 gap-4">
             {myProjects.map((p) => (
@@ -168,7 +181,9 @@ export default function Profile() {
         <h2 className="text-xl font-bold mb-4">My Blogs</h2>
 
         {myBlogs.length === 0 ? (
-          <p className="text-gray-500">You have not posted any blogs yet.</p>
+          <p className="text-gray-500">
+            You have not posted any blogs yet.
+          </p>
         ) : (
           <div className="grid md:grid-cols-2 gap-4">
             {myBlogs.map((b) => (
