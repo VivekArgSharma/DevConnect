@@ -1,4 +1,19 @@
-# Logs
+# ============================================================
+# ENVIRONMENT FILES (MOST IMPORTANT — DO NOT REMOVE)
+# ============================================================
+.env
+.env.local
+.env.*.local
+*.env
+*.env.local
+
+# Specific project folders
+devconnect-backend/.env
+server-chat/.env
+
+# ============================================================
+# LOG FILES
+# ============================================================
 logs
 *.log
 npm-debug.log*
@@ -7,16 +22,58 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
-*.local
+# ============================================================
+# DEPENDENCIES & BUILD OUTPUT
+# ============================================================
+node_modules/
+dist/
+dist-ssr/
+out/
+build/
 
-# Editor directories and files
+# Vite cache
+.vite/
+vite.config.ts.timestamp*
+
+# Typescript output
+*.tsbuildinfo
+
+# ============================================================
+# EDITOR & OS JUNK
+# ============================================================
+# VSCode
 .vscode/*
 !.vscode/extensions.json
-.idea
+
+# JetBrains / WebStorm
+.idea/
+
+# OS
 .DS_Store
+Thumbs.db
+
+# Windows shortcuts
+*.lnk
+
+# ============================================================
+# OPTIONAL: SUPABASE LOCAL CONFIG
+# (only ignore if you DON'T want these pushed)
+# ============================================================
+supabase/.temp
+supabase/.branches
+supabase/migrations/.temp
+
+# ============================================================
+# OPTIONAL: CHAT SERVER CACHE OR TEMP FILES
+# ============================================================
+server-chat/tmp/
+server-chat/cache/
+devconnect-backend/tmp/
+devconnect-backend/cache/
+
+# ============================================================
+# OTHER OPTIONAL
+# ============================================================
 *.suo
 *.ntvs*
 *.njsproj
