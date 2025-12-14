@@ -20,7 +20,7 @@ export default function DeletePostButton({
 
     try {
       const res = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/posts/${postId}`,
+        `${import.meta.env.VITE_API_URL}/posts/${postId}`,
         {
           method: "DELETE",
           headers: {

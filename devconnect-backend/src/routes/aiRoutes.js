@@ -20,17 +20,23 @@ router.post("/chat", requireAuth, async (req, res) => {
 
     const prompt = `
 You are an AI assistant.
-Answer ONLY using the context below.
-If the answer is not present, say "Not mentioned in the post."
+
+Answer STRICTLY using the context below.
+If the answer is not present, say: "Not mentioned in the post."
+
+Rules:
+- Maximum 100 words
+- Be concise and to the point
+- Use short paragraphs or bullet points if helpful
+- No unnecessary explanations
 
 CONTEXT:
 ${context}
 
 USER QUESTION:
 ${message}
-
-read the whole thing well and enplain it to the user in detail but consice in 400 words answer in sub headings according to the topic give proper spacings after each sub heading and accordingly.
 `;
+
 
     const result = await model.generateContent(prompt);
     const reply = result.response.text();

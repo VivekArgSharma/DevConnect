@@ -1,4 +1,3 @@
-// src/components/TagInput.tsx
 import React, { useEffect, useState } from "react";
 import { fetchAllTags } from "@/lib/posts";
 
@@ -20,20 +19,39 @@ export default function TagInput({
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
 
-  useEffect(() => setTags(value || []), [value]);
+  useEffect(() => {
+    setTags(value || []);
+  }, [value]);
 
+  // ✅ FIX: fetch BOTH project + blog tags
   useEffect(() => {
     let mounted = true;
+
     (async () => {
       try {
-        const data: any = await fetchAllTags();
-        if (!mounted || !data) return;
-        setSuggestions(data.map((d: any) => d.tag));
+        const [projectTags, blogTags] = await Promise.all([
+          fetchAllTags("project"),
+          fetchAllTags("blog"),
+        ]);
+
+        if (!mounted) return;
+
+        const merged = [...projectTags, ...blogTags];
+
+        // optional dedupe
+        const unique = Array.from(
+          new Set(merged.map((d: any) => d.tag))
+        );
+
+        setSuggestions(unique);
       } catch {
-        // ignore
+        // ignore errors
       }
     })();
-    return () => { mounted = false; };
+
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   function normalize(t: string) {
@@ -70,14 +88,19 @@ export default function TagInput({
 
   const filtered = suggestions
     .filter((s) => !tags.includes(s))
-    .filter((s) => (input ? s.includes(input.toLowerCase()) : true))
+    .filter((s) =>
+      input ? s.includes(input.toLowerCase()) : true
+    )
     .slice(0, suggestionLimit);
 
   return (
     <div>
       <div className="flex gap-2 flex-wrap items-center">
         {tags.map((t, i) => (
-          <div key={t} className="inline-flex items-center gap-2 px-3 py-1 rounded-full border text-sm">
+          <div
+            key={t}
+            className="inline-flex items-center gap-2 px-3 py-1 rounded-full border text-sm"
+          >
             <span>{t}</span>
             <button
               type="button"
@@ -92,7 +115,10 @@ export default function TagInput({
 
         <input
           value={input}
-          onChange={(e) => { setInput(e.target.value); setShowSuggestions(true); }}
+          onChange={(e) => {
+            setInput(e.target.value);
+            setShowSuggestions(true);
+          }}
           onKeyDown={onKeyDown}
           onFocus={() => setShowSuggestions(true)}
           onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
@@ -103,13 +129,15 @@ export default function TagInput({
 
       {showSuggestions && filtered.length > 0 && (
         <div className="mt-2 border rounded bg-white p-2 shadow-sm max-w-md">
-          <div className="text-xs text-muted-foreground mb-2">Suggestions</div>
+          <div className="text-xs text-muted-foreground mb-2">
+            Suggestions
+          </div>
           <div className="flex gap-2 flex-wrap">
             {filtered.map((s) => (
               <button
                 key={s}
                 type="button"
-                onMouseDown={() => { addTag(s); }}
+                onMouseDown={() => addTag(s)}
                 className="px-3 py-1 rounded-full border text-sm"
               >
                 {s}
