@@ -29,6 +29,7 @@ router.post("/", requireAuth, async (req, res) => {
       return res.status(400).json({ error: "type and title are required" });
     }
 
+    // ✅ CREATE POST (PENDING)
     const { data, error } = await supabaseAdmin
       .from("posts")
       .insert({
@@ -42,7 +43,7 @@ router.post("/", requireAuth, async (req, res) => {
         short_description,
         project_link,
         github_link,
-        status: "pending", // ✅ FORCE PENDING
+        status: "pending",
       })
       .select()
       .single();
@@ -51,6 +52,18 @@ router.post("/", requireAuth, async (req, res) => {
       console.error("Create post error:", error);
       return res.status(500).json({ error: "Failed to create post" });
     }
+
+    /* -------------------------------------------------
+       🔔 ADMIN NOTIFICATION (NEW POST)
+       Text shown to admin
+    ------------------------------------------------- */
+    await supabaseAdmin.from("notifications").insert({
+      user_id: null, // admin-side notification
+      type: "admin_moderation",
+      message: "New post submitted for moderation",
+      related_post: data.id,
+      sender_id: userId,
+    });
 
     return res.status(201).json(data);
   } catch (err) {
@@ -69,7 +82,7 @@ router.get("/", async (req, res) => {
     let query = supabaseAdmin
       .from("posts")
       .select("*, profiles(full_name, avatar_url)")
-      .eq("status", "approved") // ✅ IMPORTANT
+      .eq("status", "approved")
       .order("created_at", { ascending: false });
 
     if (type) query = query.eq("type", type);
@@ -129,7 +142,7 @@ router.get("/:id", async (req, res) => {
       .from("posts")
       .select("*, profiles(full_name, avatar_url)")
       .eq("id", postId)
-      .eq("status", "approved") // ✅ IMPORTANT
+      .eq("status", "approved")
       .single();
 
     if (error || !data) {
@@ -232,7 +245,7 @@ router.get("/top/projects", async (req, res) => {
       .from("posts")
       .select("*, profiles(full_name, avatar_url)")
       .eq("type", "project")
-      .eq("status", "approved") // ✅ IMPORTANT
+      .eq("status", "approved")
       .order("likes_count", { ascending: false })
       .limit(limit);
 
