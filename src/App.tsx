@@ -20,7 +20,10 @@ import StarredPosts from "./pages/StarredPosts";
 
 // ✅ CHAT PAGES
 import ChatPage from "./pages/ChatPage";
-import Chats from "./pages/Chats"; // ✅ DM LIST PAGE
+import Chats from "./pages/Chats";
+
+// ✅ ADMIN PAGE
+import AdminDashboard from "./pages/AdminDashboard";
 
 const queryClient = new QueryClient();
 
@@ -31,34 +34,40 @@ export default function App() {
         <BrowserRouter>
           <Layout>
             <Routes>
+              {/* HOME */}
               <Route path="/" element={<Index />} />
 
+              {/* PROJECTS */}
               <Route path="/projects" element={<Projects />} />
               <Route path="/projects/:id" element={<ProjectDetails />} />
 
+              {/* BLOGS */}
               <Route path="/blogs" element={<Blogs />} />
               <Route path="/blogs/:id" element={<BlogDetails />} />
 
+              {/* CREATE POST */}
               <Route path="/post/:id" element={<Post />} />
               <Route path="/post" element={<Post />} />
 
-              {/* Current User Profile */}
+              {/* PROFILE */}
               <Route path="/profile" element={<Profile />} />
               <Route path="/starred" element={<StarredPosts />} />
-
-              {/* Edit Profile */}
               <Route path="/edit-profile" element={<EditProfile />} />
 
-              {/* Public User Profile */}
+              {/* PUBLIC PROFILE */}
               <Route path="/user/:userId" element={<PublicProfile />} />
 
-              {/* ✅ CHAT ROUTES */}
+              {/* CHAT */}
               <Route path="/chats" element={<Chats />} />
               <Route path="/chat/:chatId" element={<ChatPage />} />
 
+              {/* TEAMS */}
               <Route path="/teams" element={<TeamFinder />} />
 
+              {/* 🔒 ADMIN (BACKEND SECURED) */}
+              <Route path="/admin" element={<AdminDashboard />} />
 
+              {/* FALLBACK */}
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Layout>

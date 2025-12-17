@@ -18,22 +18,45 @@ export const PillBase: React.FC = () => {
   const [expanded, setExpanded] = useState(false);
   const [hovering, setHovering] = useState(false);
   const [unreadTotal, setUnreadTotal] = useState(0);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // ✅ ✅ ✅ TEAM FINDER ADDED HERE
+  /* -----------------------------------------------------
+     CHECK ADMIN (EMAIL-BASED, BACKEND ALIGNED)
+  ----------------------------------------------------- */
+  useEffect(() => {
+    async function checkAdmin() {
+      const { data } = await supabase.auth.getUser();
+      const user = data.user;
+
+      if (!user) return;
+
+      // MUST MATCH backend ADMIN_EMAIL
+      if (user.email === import.meta.env.VITE_ADMIN_EMAIL) {
+        setIsAdmin(true);
+      }
+    }
+
+    checkAdmin();
+  }, []);
+
+  /* -----------------------------------------------------
+     NAV ITEMS (ADMIN ADDED CONDITIONALLY)
+  ----------------------------------------------------- */
   const navItems: NavItem[] = [
     { label: "Home", id: "home", path: "/" },
     { label: "Projects", id: "projects", path: "/projects" },
     { label: "Blogs", id: "blogs", path: "/blogs" },
     { label: "Post", id: "post", path: "/post" },
-
-    // ✅ NEW FEATURE
     { label: "Teams", id: "teams", path: "/teams" },
-
     { label: "Profile", id: "profile", path: "/profile" },
     { label: "Chats", id: "chats", path: "/chats" },
+
+    ...(isAdmin
+      ? [{ label: "Admin", id: "admin", path: "/admin" }]
+      : []),
   ];
 
   const pillWidth = useSpring(140, { stiffness: 220, damping: 25 });
@@ -42,7 +65,7 @@ export const PillBase: React.FC = () => {
   useEffect(() => {
     const match = navItems.find((n) => n.path === location.pathname);
     if (match) setActiveSection(match.id);
-  }, [location.pathname]);
+  }, [location.pathname, navItems]);
 
   useEffect(() => {
     if (hovering) {
@@ -57,7 +80,9 @@ export const PillBase: React.FC = () => {
     }
   }, [hovering]);
 
-  // ✅ CHAT UNREAD FIX (already correct)
+  /* -----------------------------------------------------
+     CHAT UNREAD COUNT
+  ----------------------------------------------------- */
   useEffect(() => {
     async function loadUnread() {
       const { data } = await supabase.auth.getSession();

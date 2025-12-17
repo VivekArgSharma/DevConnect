@@ -7,14 +7,14 @@ import { supabaseAdmin } from "../config/supabaseClient.js";
 const router = express.Router();
 
 /* -----------------------------------------------------
-   CREATE A POST
+   CREATE A POST (AUTHENTICATED)
 ----------------------------------------------------- */
 router.post("/", requireAuth, async (req, res) => {
   try {
     const userId = req.user.id;
 
     const {
-      type, // "project" or "blog"
+      type, // "project" | "blog"
       title,
       content,
       tags,
@@ -42,6 +42,7 @@ router.post("/", requireAuth, async (req, res) => {
         short_description,
         project_link,
         github_link,
+        status: "pending", // ✅ FORCE PENDING
       })
       .select()
       .single();
@@ -59,7 +60,7 @@ router.post("/", requireAuth, async (req, res) => {
 });
 
 /* -----------------------------------------------------
-   LIST POSTS (Public)
+   LIST POSTS (PUBLIC → APPROVED ONLY)
 ----------------------------------------------------- */
 router.get("/", async (req, res) => {
   try {
@@ -68,6 +69,7 @@ router.get("/", async (req, res) => {
     let query = supabaseAdmin
       .from("posts")
       .select("*, profiles(full_name, avatar_url)")
+      .eq("status", "approved") // ✅ IMPORTANT
       .order("created_at", { ascending: false });
 
     if (type) query = query.eq("type", type);
@@ -87,7 +89,7 @@ router.get("/", async (req, res) => {
 });
 
 /* -----------------------------------------------------
-   GET MY POSTS (Authenticated)
+   GET MY POSTS (AUTH → ALL STATUSES)
 ----------------------------------------------------- */
 router.get("/mine", requireAuth, async (req, res) => {
   try {
@@ -117,7 +119,7 @@ router.get("/mine", requireAuth, async (req, res) => {
 });
 
 /* -----------------------------------------------------
-   GET SINGLE POST
+   GET SINGLE POST (PUBLIC → APPROVED ONLY)
 ----------------------------------------------------- */
 router.get("/:id", async (req, res) => {
   try {
@@ -127,6 +129,7 @@ router.get("/:id", async (req, res) => {
       .from("posts")
       .select("*, profiles(full_name, avatar_url)")
       .eq("id", postId)
+      .eq("status", "approved") // ✅ IMPORTANT
       .single();
 
     if (error || !data) {
@@ -141,21 +144,20 @@ router.get("/:id", async (req, res) => {
 });
 
 /* -----------------------------------------------------
-   DELETE POST
+   DELETE POST (OWNER ONLY)
 ----------------------------------------------------- */
 router.delete("/:id", requireAuth, async (req, res) => {
   try {
     const userId = req.user.id;
     const postId = req.params.id;
 
-    // Verify owner
-    const { data: post, error: ownerError } = await supabaseAdmin
+    const { data: post, error } = await supabaseAdmin
       .from("posts")
       .select("user_id")
       .eq("id", postId)
       .single();
 
-    if (ownerError || !post) {
+    if (error || !post) {
       return res.status(404).json({ error: "Post not found" });
     }
 
@@ -181,27 +183,20 @@ router.delete("/:id", requireAuth, async (req, res) => {
 });
 
 /* -----------------------------------------------------
-   UPVOTE / TOGGLE UPVOTE
+   UPVOTE / TOGGLE UPVOTE (AUTH)
 ----------------------------------------------------- */
 router.post("/:id/upvote", requireAuth, async (req, res) => {
   try {
     const postId = req.params.id;
     const userId = req.user.id;
 
-    // Check if user already upvoted
-    const { data: existing, error: checkError } = await supabaseAdmin
+    const { data: existing } = await supabaseAdmin
       .from("post_upvotes")
       .select("*")
       .eq("post_id", postId)
       .eq("user_id", userId)
       .maybeSingle();
 
-    if (checkError) {
-      console.error("Check upvote error:", checkError);
-      return res.status(500).json({ error: "Error checking upvote status" });
-    }
-
-    // If exists → remove upvote (toggle)
     if (existing) {
       await supabaseAdmin
         .from("post_upvotes")
@@ -209,28 +204,16 @@ router.post("/:id/upvote", requireAuth, async (req, res) => {
         .eq("post_id", postId)
         .eq("user_id", userId);
 
-      // Update likes_count
       await supabaseAdmin.rpc("update_post_likes_count", { pid: postId });
-
       return res.json({ upvoted: false });
     }
 
-    // Otherwise → add upvote
-    const { error: insertError } = await supabaseAdmin
-      .from("post_upvotes")
-      .insert({
-        post_id: postId,
-        user_id: userId,
-      });
+    await supabaseAdmin.from("post_upvotes").insert({
+      post_id: postId,
+      user_id: userId,
+    });
 
-    if (insertError) {
-      console.error("Insert upvote error:", insertError);
-      return res.status(500).json({ error: "Failed to upvote" });
-    }
-
-    // Update likes count
     await supabaseAdmin.rpc("update_post_likes_count", { pid: postId });
-
     return res.json({ upvoted: true });
   } catch (err) {
     console.error("Unexpected upvote error:", err);
@@ -239,7 +222,7 @@ router.post("/:id/upvote", requireAuth, async (req, res) => {
 });
 
 /* -----------------------------------------------------
-   TOP POSTS (Top 8 by likes)
+   TOP PROJECTS (PUBLIC → APPROVED ONLY)
 ----------------------------------------------------- */
 router.get("/top/projects", async (req, res) => {
   try {
@@ -249,6 +232,7 @@ router.get("/top/projects", async (req, res) => {
       .from("posts")
       .select("*, profiles(full_name, avatar_url)")
       .eq("type", "project")
+      .eq("status", "approved") // ✅ IMPORTANT
       .order("likes_count", { ascending: false })
       .limit(limit);
 
