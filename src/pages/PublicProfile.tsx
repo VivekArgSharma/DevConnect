@@ -22,9 +22,6 @@ export default function PublicProfile() {
   const [posts, setPosts] = useState<any[] | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
-  // ------------------------------
-  // LOAD CURRENT USER SESSION
-  // ------------------------------
   useEffect(() => {
     async function loadSession() {
       const { data } = await supabase.auth.getSession();
@@ -33,9 +30,6 @@ export default function PublicProfile() {
     loadSession();
   }, []);
 
-  // ------------------------------
-  // LOAD PROFILE & POSTS
-  // ------------------------------
   useEffect(() => {
     if (!userId) return;
 
@@ -61,12 +55,13 @@ export default function PublicProfile() {
   }, [userId]);
 
   if (!profile) {
-    return <div className="p-6">Loading...</div>;
+    return (
+      <div className="min-h-screen bg-[#0a0a0b] flex items-center justify-center">
+        <div className="text-zinc-400 text-sm animate-pulse">Loading...</div>
+      </div>
+    );
   }
 
-  // ------------------------------
-  // DM HANDLER (✅ SECURE)
-  // ------------------------------
   async function handleDM() {
     const sessionRes = await supabase.auth.getSession();
     const token = sessionRes.data.session?.access_token;
@@ -96,93 +91,124 @@ export default function PublicProfile() {
   }
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
-      <div className="bg-white p-6 rounded-lg shadow-sm">
+    <div className="min-h-screen bg-[#0a0a0b] py-12 px-4 sm:px-6">
+      <div className="max-w-4xl mx-auto">
+        {/* Main Profile Card */}
+        <div className="bg-[#111113] border border-zinc-800/50 rounded-2xl p-8 shadow-2xl shadow-black/20">
+          
+          {/* Header Section */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
+            <div className="flex items-center gap-5">
+              <div className="relative">
+                <img
+                  src={profile.avatar_url || "/default-avatar.png"}
+                  className="w-24 h-24 rounded-full object-cover ring-2 ring-zinc-700/50"
+                  alt="avatar"
+                />
+                <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-emerald-500 rounded-full border-4 border-[#111113]" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-semibold text-zinc-100 tracking-tight">
+                  {profile.full_name}
+                </h2>
+                <p className="text-zinc-500 text-sm mt-0.5">@{profile.username}</p>
+              </div>
+            </div>
 
-        {/* HEADER */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <img
-              src={profile.avatar_url || "/default-avatar.png"}
-              className="w-20 h-20 rounded-full object-cover"
-              alt="avatar"
-            />
-            <div>
-              <h2 className="text-2xl font-bold">{profile.full_name}</h2>
-              <p className="text-gray-600">@{profile.username}</p>
+            {/* Action Buttons */}
+            <div className="flex gap-3">
+              {userId && <FollowButton targetUserId={userId} />}
+
+              {currentUserId && currentUserId !== userId && (
+                <button
+                  onClick={handleDM}
+                  className="px-5 py-2.5 rounded-xl bg-zinc-800 text-zinc-200 text-sm font-medium 
+                           hover:bg-zinc-700 transition-all duration-200 
+                           border border-zinc-700/50 hover:border-zinc-600"
+                >
+                  Message
+                </button>
+              )}
             </div>
           </div>
 
-          {/* Right-side buttons */}
-          <div className="flex gap-3">
-            {userId && <FollowButton targetUserId={userId} />}
+          {/* Bio Section */}
+          {profile.bio && (
+            <div className="mt-8 p-5 bg-zinc-900/50 border border-zinc-800/50 rounded-xl">
+              <p className="text-zinc-300 text-sm leading-relaxed">{profile.bio}</p>
+            </div>
+          )}
 
-            {currentUserId && currentUserId !== userId && (
-              <button
-                onClick={handleDM}
-                className="px-3 py-1 rounded bg-blue-600 text-white hover:bg-blue-700"
+          {/* Website & Skills */}
+          <div className="mt-6 flex flex-wrap items-center gap-3">
+            {profile.website && (
+              <a
+                className="inline-flex items-center gap-1.5 text-sm text-cyan-400 hover:text-cyan-300 
+                         transition-colors duration-200"
+                href={profile.website}
+                target="_blank"
+                rel="noreferrer"
               >
-                DM
-              </button>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                        d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                </svg>
+                {profile.website.replace(/^https?:\/\//, '')}
+              </a>
+            )}
+
+            {profile.skills?.map((s) => (
+              <span
+                key={s}
+                className="text-xs font-medium bg-zinc-800/80 text-zinc-400 px-3 py-1.5 rounded-lg
+                         border border-zinc-700/30"
+              >
+                {s}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        {/* Posts Section */}
+        <div className="mt-8">
+          <div className="flex items-center gap-3 mb-6">
+            <h3 className="text-lg font-semibold text-zinc-100">Posts</h3>
+            {posts && posts.length > 0 && (
+              <span className="text-xs font-medium bg-zinc-800 text-zinc-400 px-2 py-1 rounded-md">
+                {posts.length}
+              </span>
             )}
           </div>
-        </div>
-
-        {/* BIO */}
-        {profile.bio && (
-          <div className="mt-6 p-4 bg-white border rounded-lg">
-            <p className="text-sm text-slate-700">{profile.bio}</p>
-          </div>
-        )}
-
-        {/* WEBSITE + SKILLS */}
-        <div className="mt-4 flex flex-wrap gap-3">
-          {profile.website && (
-            <a
-              className="text-sm text-sky-600"
-              href={profile.website}
-              target="_blank"
-              rel="noreferrer"
-            >
-              {profile.website}
-            </a>
-          )}
-
-          {profile.skills?.map((s) => (
-            <span key={s} className="text-xs bg-slate-100 px-2 py-1 rounded">
-              {s}
-            </span>
-          ))}
-        </div>
-
-        {/* POSTS */}
-        <div className="mt-6">
-          <h3 className="text-lg font-medium mb-3">Posts</h3>
 
           {posts?.length === 0 && (
-            <div className="text-sm text-slate-500">
-              This user has no posts yet.
+            <div className="bg-[#111113] border border-zinc-800/50 rounded-xl p-12 text-center">
+              <div className="text-zinc-600 text-sm">No posts yet</div>
             </div>
           )}
 
-          {posts && (
+          {posts && posts.length > 0 && (
             <div className="grid grid-cols-1 gap-4">
               {posts.map((post: any) => (
-                <ProjectCard
+                <div
                   key={post.id}
-                  image={post.image_url || "/placeholder.png"}
-                  title={post.title}
-                  description={post.excerpt || post.description || ""}
-                  author={profile.full_name || ""}
-                  techStack={post.tags?.join(", ")}
-                  onClick={() =>
-                    navigate(
-                      post.type === "blog"
-                        ? `/blogs/${post.id}`
-                        : `/projects/${post.id}`
-                    )
-                  }
-                />
+                  className="bg-[#111113] border border-zinc-800/50 rounded-xl 
+                           hover:border-zinc-700/50 transition-all duration-200 overflow-hidden"
+                >
+                  <ProjectCard
+                    image={post.image_url || "/placeholder.png"}
+                    title={post.title}
+                    description={post.excerpt || post.description || ""}
+                    author={profile.full_name || ""}
+                    techStack={post.tags?.join(", ")}
+                    onClick={() =>
+                      navigate(
+                        post.type === "blog"
+                          ? `/blogs/${post.id}`
+                          : `/projects/${post.id}`
+                      )
+                    }
+                  />
+                </div>
               ))}
             </div>
           )}
