@@ -13,6 +13,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { fetchStarredPostIds, toggleStar } from "@/lib/stars";
 
 const API_URL = import.meta.env.VITE_API_URL;
+const PAGE_SIZE = 9;
 
 export default function Blogs() {
   const navigate = useNavigate();
@@ -20,17 +21,21 @@ export default function Blogs() {
   const { user, accessToken } = (useAuth() as any) || {};
 
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [page, setPage] = useState(1);
 
-  // Fetch blog posts
-  const {
-    data: posts = [],
-    isLoading,
-  } = useQuery({
-    queryKey: ["blogs", selectedTags],
-    queryFn: () => fetchPostsByTags("blog", selectedTags),
+  /* ---------------- FETCH BLOGS ---------------- */
+  const { data, isLoading, isFetching } = useQuery({
+    queryKey: ["blogs", selectedTags, page],
+    queryFn: () =>
+      fetchPostsByTags("blog", selectedTags, page, PAGE_SIZE),
+    placeholderData: (prev) => prev,
+    staleTime: 60_000,
   });
 
-  // Fetch starred IDs
+  const posts = data?.data ?? [];
+  const hasMore = Boolean(data?.meta?.hasMore);
+
+  /* ---------------- STARRED POSTS ---------------- */
   const { data: starredIds = [] } = useQuery({
     queryKey: ["starred-ids"],
     queryFn: () =>
@@ -50,6 +55,11 @@ export default function Blogs() {
     queryClient.invalidateQueries({ queryKey: ["blogs"] });
   };
 
+  const handleTagChange = (tags: string[]) => {
+    setSelectedTags(tags);
+    setPage(1);
+  };
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -57,14 +67,14 @@ export default function Blogs() {
 
         <TagsFilter
           selected={selectedTags}
-          onChange={setSelectedTags}
+          onChange={handleTagChange}
           type="blog"
         />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {isLoading && <p>Loading blogs…</p>}
-        {!isLoading && posts?.length === 0 && <p>No blogs found</p>}
+        {!isLoading && posts.length === 0 && <p>No blogs found</p>}
 
         {posts.map((post: any) => (
           <ProjectCard
@@ -82,6 +92,18 @@ export default function Blogs() {
           />
         ))}
       </div>
+
+      {hasMore && (
+        <div className="flex justify-center mt-8">
+          <button
+            onClick={() => setPage((p) => p + 1)}
+            disabled={isFetching}
+            className="px-6 py-2 border rounded-md hover:bg-muted"
+          >
+            {isFetching ? "Loading…" : "Load more"}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

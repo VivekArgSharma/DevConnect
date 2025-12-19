@@ -13,6 +13,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { fetchStarredPostIds, toggleStar } from "@/lib/stars";
 
 const API_URL = import.meta.env.VITE_API_URL;
+const PAGE_SIZE = 9;
 
 export default function Projects() {
   const navigate = useNavigate();
@@ -20,17 +21,21 @@ export default function Projects() {
   const { user, accessToken } = (useAuth() as any) || {};
 
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [page, setPage] = useState(1);
 
-  // Fetch projects
-  const {
-    data: posts = [],
-    isLoading,
-  } = useQuery({
-    queryKey: ["projects", selectedTags],
-    queryFn: () => fetchPostsByTags("project", selectedTags),
+  /* ---------------- FETCH PROJECTS ---------------- */
+  const { data, isLoading, isFetching } = useQuery({
+    queryKey: ["projects", selectedTags, page],
+    queryFn: () =>
+      fetchPostsByTags("project", selectedTags, page, PAGE_SIZE),
+    placeholderData: (prev) => prev,
+    staleTime: 60_000,
   });
 
-  // Fetch starred IDs for current user
+  const posts = data?.data ?? [];
+  const hasMore = Boolean(data?.meta?.hasMore);
+
+  /* ---------------- STARRED POSTS ---------------- */
   const { data: starredIds = [] } = useQuery({
     queryKey: ["starred-ids"],
     queryFn: () =>
@@ -41,7 +46,6 @@ export default function Projects() {
   const handleToggleStar = async (postId: string) => {
     if (!user) return;
     await toggleStar(postId, user.id);
-    // Refresh star info across pages
     queryClient.invalidateQueries({ queryKey: ["starred-ids"] });
   };
 
@@ -51,6 +55,11 @@ export default function Projects() {
     queryClient.invalidateQueries({ queryKey: ["projects"] });
   };
 
+  const handleTagChange = (tags: string[]) => {
+    setSelectedTags(tags);
+    setPage(1);
+  };
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -58,12 +67,11 @@ export default function Projects() {
 
         <TagsFilter
           selected={selectedTags}
-          onChange={setSelectedTags}
+          onChange={handleTagChange}
           type="project"
         />
       </div>
 
-      {/* PROJECT GRID */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {isLoading && <p>Loading projects…</p>}
         {!isLoading && posts.length === 0 && <p>No projects found</p>}
@@ -84,6 +92,18 @@ export default function Projects() {
           />
         ))}
       </div>
+
+      {hasMore && (
+        <div className="flex justify-center mt-8">
+          <button
+            onClick={() => setPage((p) => p + 1)}
+            disabled={isFetching}
+            className="px-6 py-2 border rounded-md hover:bg-muted"
+          >
+            {isFetching ? "Loading…" : "Load more"}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

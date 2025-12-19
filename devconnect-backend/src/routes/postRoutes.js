@@ -1,5 +1,3 @@
-// src/routes/postRoutes.js
-
 import express from "express";
 import { requireAuth } from "../middleware/authMiddleware.js";
 import { supabaseAdmin } from "../config/supabaseClient.js";
@@ -14,7 +12,7 @@ router.post("/", requireAuth, async (req, res) => {
     const userId = req.user.id;
 
     const {
-      type, // "project" | "blog"
+      type,
       title,
       content,
       tags,
@@ -29,7 +27,6 @@ router.post("/", requireAuth, async (req, res) => {
       return res.status(400).json({ error: "type and title are required" });
     }
 
-    // ✅ CREATE POST (PENDING)
     const { data, error } = await supabaseAdmin
       .from("posts")
       .insert({
@@ -53,12 +50,8 @@ router.post("/", requireAuth, async (req, res) => {
       return res.status(500).json({ error: "Failed to create post" });
     }
 
-    /* -------------------------------------------------
-       🔔 ADMIN NOTIFICATION (NEW POST)
-       Text shown to admin
-    ------------------------------------------------- */
     await supabaseAdmin.from("notifications").insert({
-      user_id: null, // admin-side notification
+      user_id: null,
       type: "admin_moderation",
       message: "New post submitted for moderation",
       related_post: data.id,
@@ -73,28 +66,59 @@ router.post("/", requireAuth, async (req, res) => {
 });
 
 /* -----------------------------------------------------
-   LIST POSTS (PUBLIC → APPROVED ONLY)
+   LIST POSTS (PUBLIC → APPROVED ONLY) ✅ OPTIMIZED
 ----------------------------------------------------- */
 router.get("/", async (req, res) => {
   try {
-    const { type } = req.query;
+    const {
+      type,
+      page = "1",
+      limit = "12",
+    } = req.query;
+
+    const pageNum = Math.max(parseInt(page, 10), 1);
+    const limitNum = Math.min(parseInt(limit, 10), 30);
+    const from = (pageNum - 1) * limitNum;
+    const to = from + limitNum - 1;
 
     let query = supabaseAdmin
       .from("posts")
-      .select("*, profiles(full_name, avatar_url)")
+      .select(
+        `
+        id,
+        type,
+        title,
+        short_description,
+        cover_image_url,
+        tags,
+        likes_count,
+        created_at,
+        profiles(full_name, avatar_url)
+        `,
+        { count: "exact" }
+      )
       .eq("status", "approved")
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .range(from, to);
 
     if (type) query = query.eq("type", type);
 
-    const { data, error } = await query;
+    const { data, count, error } = await query;
 
     if (error) {
       console.error("Fetch posts error:", error);
       return res.status(500).json({ error: "Failed to fetch posts" });
     }
 
-    return res.json(data);
+    return res.json({
+      data,
+      meta: {
+        page: pageNum,
+        limit: limitNum,
+        total: count,
+        hasMore: from + data.length < count,
+      },
+    });
   } catch (err) {
     console.error("Unexpected fetch posts error:", err);
     return res.status(500).json({ error: "Internal server error" });
@@ -235,7 +259,7 @@ router.post("/:id/upvote", requireAuth, async (req, res) => {
 });
 
 /* -----------------------------------------------------
-   TOP PROJECTS (PUBLIC → APPROVED ONLY)
+   TOP PROJECTS (PUBLIC → APPROVED ONLY) ✅ OPTIMIZED
 ----------------------------------------------------- */
 router.get("/top/projects", async (req, res) => {
   try {
@@ -243,7 +267,17 @@ router.get("/top/projects", async (req, res) => {
 
     const { data, error } = await supabaseAdmin
       .from("posts")
-      .select("*, profiles(full_name, avatar_url)")
+      .select(
+        `
+        id,
+        title,
+        short_description,
+        cover_image_url,
+        tags,
+        likes_count,
+        profiles(full_name, avatar_url)
+        `
+      )
       .eq("type", "project")
       .eq("status", "approved")
       .order("likes_count", { ascending: false })
@@ -260,5 +294,43 @@ router.get("/top/projects", async (req, res) => {
     return res.status(500).json({ error: "Internal server error" });
   }
 });
+
+/* -----------------------------------------------------
+   TOP BLOGS (PUBLIC → APPROVED ONLY)
+----------------------------------------------------- */
+router.get("/top/blogs", async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit || "8", 10);
+
+    const { data, error } = await supabaseAdmin
+      .from("posts")
+      .select(
+        `
+        id,
+        title,
+        short_description,
+        cover_image_url,
+        tags,
+        likes_count,
+        profiles(full_name, avatar_url)
+        `
+      )
+      .eq("type", "blog")
+      .eq("status", "approved")
+      .order("likes_count", { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      console.error("Top blogs error:", error);
+      return res.status(500).json({ error: "Failed to fetch top blogs" });
+    }
+
+    return res.json(data);
+  } catch (err) {
+    console.error("Unexpected top blogs error:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 
 export default router;

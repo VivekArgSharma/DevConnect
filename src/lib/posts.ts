@@ -5,7 +5,6 @@ import { supabase } from "./supabaseClient";
    TAGS (UNCHANGED)
 ----------------------------------------------------- */
 
-// Fetch tags by content type (project or blog)
 export async function fetchAllTags(type: "project" | "blog") {
   const viewName =
     type === "project"
@@ -22,41 +21,64 @@ export async function fetchAllTags(type: "project" | "blog") {
 }
 
 /* -----------------------------------------------------
-   FETCH POSTS (PUBLIC → APPROVED ONLY)
+   FETCH POSTS (PUBLIC → APPROVED ONLY) [OPTIMIZED]
 ----------------------------------------------------- */
+
+type FetchPostsResult = {
+  data: any[];
+  meta: {
+    page: number;
+    limit: number;
+    total: number | null;
+    hasMore: boolean;
+  };
+};
 
 export async function fetchPostsByTags(
   p_type: "project" | "blog",
-  selectedTags?: string[]
-) {
+  selectedTags: string[] = [],
+  page: number = 1,
+  limit: number = 9
+): Promise<FetchPostsResult> {
+  const from = (page - 1) * limit;
+  const to = from + limit - 1;
+
   let query = supabase
     .from("posts")
-    .select("*, profiles(full_name)")
+    .select(
+      `
+      id,
+      type,
+      title,
+      short_description,
+      cover_image_url,
+      tags,
+      likes_count,
+      created_at,
+      profiles(full_name)
+      `,
+      { count: "exact" }
+    )
     .eq("type", p_type)
-    .eq("status", "approved") // ✅ CRITICAL FIX
-    .order("created_at", { ascending: false });
+    .eq("status", "approved")
+    .order("created_at", { ascending: false })
+    .range(from, to);
 
-  if (selectedTags && selectedTags.length > 0) {
+  if (selectedTags.length > 0) {
     query = query.contains("tags", selectedTags);
   }
 
-  const { data, error } = await query;
+  const { data, count, error } = await query;
 
   if (error) throw error;
-  return data ?? [];
-}
 
-/* -----------------------------------------------------
-   ❌ DISABLED: FRONTEND SHOULD NOT WRITE POSTS
------------------------------------------------------ */
-
-/**
- * ❌ DO NOT USE THIS ANYMORE
- * All post creation / updates must go through backend
- * (/api/posts) so status is enforced.
- */
-export async function upsertPost() {
-  throw new Error(
-    "Direct post creation/update from frontend is disabled. Use backend API."
-  );
+  return {
+    data: data ?? [],
+    meta: {
+      page,
+      limit,
+      total: count,
+      hasMore: from + (data?.length ?? 0) < (count ?? 0),
+    },
+  };
 }
