@@ -72,7 +72,7 @@ export default function AIPostChatbot({ context }: Props) {
       {/* 🤖 Floating Button */}
       <button
         onClick={() => setOpen((s) => !s)}
-        className="fixed bottom-6 right-6 z-50 bg-black text-white p-4 rounded-full shadow-lg"
+        className="fixed bottom-6 right-6 z-50 bg-primary text-primary-foreground p-4 rounded-full shadow-lg hover:bg-primary/90 transition-colors"
         title="Ask AI"
       >
         🤖
@@ -80,9 +80,9 @@ export default function AIPostChatbot({ context }: Props) {
 
       {/* 💬 Chat Window */}
       {open && (
-        <div className="fixed bottom-24 right-6 z-50 w-96 h-[420px] bg-white border rounded-xl shadow-xl flex flex-col">
+        <div className="fixed bottom-24 right-6 z-50 w-96 h-[420px] bg-card border border-border rounded-xl shadow-xl flex flex-col">
           {/* Header */}
-          <div className="p-3 font-semibold border-b shrink-0">
+          <div className="p-3 font-semibold border-b border-border shrink-0 text-foreground">
             AI Post Assistant
           </div>
 
@@ -90,7 +90,7 @@ export default function AIPostChatbot({ context }: Props) {
           <div className="flex-1 p-3 overflow-y-auto space-y-2 text-sm">
             <button
               onClick={() => sendMessage("Summarize this post")}
-              className="bg-gray-200 px-2 py-1 rounded text-xs"
+              className="bg-secondary text-foreground px-2 py-1 rounded text-xs hover:bg-secondary/80 transition-colors"
             >
               Summarize this post
             </button>
@@ -100,8 +100,8 @@ export default function AIPostChatbot({ context }: Props) {
                 key={i}
                 className={
                   m.role === "user"
-                    ? "text-right text-blue-600"
-                    : "text-left text-gray-800"
+                    ? "text-right text-primary"
+                    : "text-left text-foreground"
                 }
               >
                 {m.text}
@@ -109,7 +109,7 @@ export default function AIPostChatbot({ context }: Props) {
             ))}
 
             {loading && (
-              <div className="text-gray-400">Thinking…</div>
+              <div className="text-muted-foreground">Thinking…</div>
             )}
 
             {/* Auto-scroll anchor */}
@@ -117,12 +117,12 @@ export default function AIPostChatbot({ context }: Props) {
           </div>
 
           {/* Input (FIXED) */}
-          <div className="p-2 border-t flex gap-2 shrink-0">
+          <div className="p-2 border-t border-border flex gap-2 shrink-0">
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder="Ask about this post..."
-              className="flex-1 border px-2 py-1 rounded text-sm"
+              className="flex-1 border border-border bg-secondary text-foreground placeholder:text-muted-foreground px-2 py-1 rounded text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
                   sendMessage(input);
@@ -135,7 +135,7 @@ export default function AIPostChatbot({ context }: Props) {
                 sendMessage(input);
                 setInput("");
               }}
-              className="bg-black text-white px-3 rounded"
+              className="bg-primary text-primary-foreground px-3 rounded hover:bg-primary/90 transition-colors"
             >
               Send
             </button>
