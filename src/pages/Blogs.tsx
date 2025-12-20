@@ -11,6 +11,7 @@ import { fetchPostsByTags } from "@/lib/posts";
 import { upvotePost } from "@/lib/upvote";
 import { useAuth } from "@/contexts/AuthContext";
 import { fetchStarredPostIds, toggleStar } from "@/lib/stars";
+import Squares from "@/components/ui/Squares";
 
 const API_URL = import.meta.env.VITE_API_URL;
 const PAGE_SIZE = 9;
@@ -61,9 +62,21 @@ export default function Blogs() {
   };
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <h1 className="text-2xl font-bold">Blogs</h1>
+    <div className="relative min-h-screen">
+      {/* Animated Background */}
+      <div className="fixed inset-0 -z-10">
+        <Squares
+          direction="diagonal"
+          speed={0.3}
+          borderColor="hsl(var(--border) / 0.3)"
+          squareSize={50}
+          hoverFillColor="hsl(var(--primary) / 0.1)"
+        />
+      </div>
+
+      <div className="relative p-6 space-y-6">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <h1 className="text-2xl font-bold">Blogs</h1>
 
         <TagsFilter
           selected={selectedTags}
@@ -93,17 +106,18 @@ export default function Blogs() {
         ))}
       </div>
 
-      {hasMore && (
-        <div className="flex justify-center mt-8">
-          <button
-            onClick={() => setPage((p) => p + 1)}
-            disabled={isFetching}
-            className="px-6 py-2 border rounded-md hover:bg-muted"
-          >
-            {isFetching ? "Loading…" : "Load more"}
-          </button>
-        </div>
-      )}
+        {hasMore && (
+          <div className="flex justify-center mt-8">
+            <button
+              onClick={() => setPage((p) => p + 1)}
+              disabled={isFetching}
+              className="px-6 py-2 border border-border rounded-md hover:bg-muted bg-card/80 backdrop-blur-sm"
+            >
+              {isFetching ? "Loading…" : "Load more"}
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
