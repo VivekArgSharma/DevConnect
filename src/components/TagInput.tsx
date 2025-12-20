@@ -99,13 +99,13 @@ export default function TagInput({
         {tags.map((t, i) => (
           <div
             key={t}
-            className="inline-flex items-center gap-2 px-3 py-1 rounded-full border text-sm"
+            className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-border bg-secondary text-foreground text-sm"
           >
             <span>{t}</span>
             <button
               type="button"
               onClick={() => removeTag(i)}
-              className="text-xs px-1"
+              className="text-xs px-1 text-muted-foreground hover:text-foreground"
               aria-label={`Remove ${t}`}
             >
               ✕
@@ -123,12 +123,12 @@ export default function TagInput({
           onFocus={() => setShowSuggestions(true)}
           onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
           placeholder={placeholder}
-          className="min-w-[160px] px-3 py-1 border rounded"
+          className="min-w-[160px] px-3 py-1 border border-border rounded bg-secondary text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
         />
       </div>
 
       {showSuggestions && filtered.length > 0 && (
-        <div className="mt-2 border rounded bg-white p-2 shadow-sm max-w-md">
+        <div className="mt-2 border border-border rounded bg-card p-2 shadow-sm max-w-md">
           <div className="text-xs text-muted-foreground mb-2">
             Suggestions
           </div>
@@ -138,7 +138,7 @@ export default function TagInput({
                 key={s}
                 type="button"
                 onMouseDown={() => addTag(s)}
-                className="px-3 py-1 rounded-full border text-sm"
+                className="px-3 py-1 rounded-full border border-border bg-secondary text-foreground text-sm hover:bg-secondary/80 transition-colors"
               >
                 {s}
               </button>

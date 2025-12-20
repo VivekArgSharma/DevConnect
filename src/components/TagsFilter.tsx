@@ -64,20 +64,20 @@ export function TagsFilter({ selected, onChange, type }: Props) {
       {/* Trigger */}
       <button
         onClick={() => setOpen(!open)}
-        className="flex items-center gap-2 px-4 py-2 border rounded-lg bg-white shadow-sm hover:bg-gray-50"
+        className="flex items-center gap-2 px-4 py-2 border border-border rounded-lg bg-card text-foreground shadow-sm hover:bg-secondary transition-colors"
       >
         <Tag className="w-4 h-4" />
         <span>Filter Tags</span>
       </button>
 
       {open && (
-        <div className="absolute mt-2 w-72 bg-white border rounded-xl shadow-lg p-4 z-50">
+        <div className="absolute mt-2 w-72 bg-card border border-border rounded-xl shadow-lg p-4 z-50">
           {/* Search bar */}
-          <div className="flex items-center gap-2 border rounded-lg px-3 py-2 mb-3 bg-gray-50">
-            <Search className="w-4 h-4 text-gray-500" />
+          <div className="flex items-center gap-2 border border-border rounded-lg px-3 py-2 mb-3 bg-secondary">
+            <Search className="w-4 h-4 text-muted-foreground" />
             <input
               placeholder="Search tags..."
-              className="w-full bg-transparent text-sm focus:outline-none"
+              className="w-full bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />
@@ -86,9 +86,9 @@ export function TagsFilter({ selected, onChange, type }: Props) {
           {/* Tag list */}
           <div className="max-h-64 overflow-y-auto pr-1 flex flex-wrap gap-2">
             {loading ? (
-              <div className="text-sm text-gray-500">Loading tags…</div>
+              <div className="text-sm text-muted-foreground">Loading tags…</div>
             ) : filtered.length === 0 ? (
-              <div className="text-sm text-gray-400">No tags found.</div>
+              <div className="text-sm text-muted-foreground">No tags found.</div>
             ) : (
               filtered.map((t) => {
                 const active = selected.includes(t.tag);
@@ -96,10 +96,10 @@ export function TagsFilter({ selected, onChange, type }: Props) {
                   <button
                     key={t.tag}
                     onClick={() => toggle(t.tag)}
-                    className={`px-3 py-1 rounded-full border text-sm ${
+                    className={`px-3 py-1 rounded-full border text-sm transition-colors ${
                       active
-                        ? "bg-blue-500 text-white border-blue-500"
-                        : "bg-gray-100 hover:bg-gray-200 border-gray-300"
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-secondary text-foreground hover:bg-secondary/80 border-border"
                     }`}
                   >
                     {t.tag}
@@ -119,7 +119,7 @@ export function TagsFilter({ selected, onChange, type }: Props) {
         {selected.map((t) => (
           <span
             key={t}
-            className="px-3 py-1 rounded-full bg-blue-100 text-blue-700 border border-blue-300 text-sm cursor-pointer"
+            className="px-3 py-1 rounded-full bg-primary/20 text-primary border border-primary/30 text-sm cursor-pointer hover:bg-primary/30 transition-colors"
             onClick={() => toggle(t)}
           >
             {t} ✕

@@ -81,7 +81,7 @@ export default function ProjectDetails() {
     [commentsRaw]
   );
 
-  if (!post) return <div>Loading...</div>;
+  if (!post) return <div className="text-foreground p-6">Loading...</div>;
 
   const goToUser = (uid?: string) => {
     if (!uid) return;
@@ -91,11 +91,11 @@ export default function ProjectDetails() {
 
   return (
     <div className="max-w-4xl mx-auto p-6">
-      <h1 className="text-3xl font-bold">{post.title}</h1>
+      <h1 className="text-3xl font-bold text-foreground">{post.title}</h1>
 
       <div className="mt-2 flex gap-2 flex-wrap">
         {(post.tags || []).map((t: string) => (
-          <span key={t} className="px-3 py-1 rounded-full border text-sm">
+          <span key={t} className="px-3 py-1 rounded-full border border-border bg-secondary text-foreground text-sm">
             {t}
           </span>
         ))}
@@ -107,7 +107,7 @@ export default function ProjectDetails() {
           className="w-10 h-10 rounded-full cursor-pointer"
           onClick={() => goToUser(post.user_id)}
         />
-        <span className="cursor-pointer text-blue-600" onClick={() => goToUser(post.user_id)}>
+        <span className="cursor-pointer text-primary hover:underline" onClick={() => goToUser(post.user_id)}>
           {post.profiles?.full_name ?? post.full_name ?? "Unknown"}
         </span>
       </div>
@@ -124,14 +124,14 @@ export default function ProjectDetails() {
       </div>
 
       <div className="mt-6">
-        <p className="whitespace-pre-line">{post.content}</p>
+        <p className="whitespace-pre-line text-foreground">{post.content}</p>
 
-        <hr className="my-6" />
-        <h2 className="text-xl font-bold">Comments</h2>
+        <hr className="my-6 border-border" />
+        <h2 className="text-xl font-bold text-foreground">Comments</h2>
 
-        <div className="border p-4 rounded-lg my-4">
+        <div className="border border-border bg-card p-4 rounded-lg my-4">
           {!user ? (
-            <p>You must log in to comment.</p>
+            <p className="text-muted-foreground">You must log in to comment.</p>
           ) : (
             <>
               <Textarea
@@ -156,9 +156,9 @@ export default function ProjectDetails() {
         </div>
 
         {commentsLoading ? (
-          <p>Loading comments...</p>
+          <p className="text-muted-foreground">Loading comments...</p>
         ) : commentTree.length === 0 ? (
-          <p className="text-gray-500">No comments yet.</p>
+          <p className="text-muted-foreground">No comments yet.</p>
         ) : (
           <div className="space-y-3">
             {commentTree.map((c) => (
@@ -232,22 +232,22 @@ function CommentNode({ node, depth, goToUser, currentUserId, onReplySubmit, onDe
 
   return (
     <div>
-      <div className={`p-3 rounded ${depth === 0 ? "bg-white border" : "bg-gray-50"}`} style={{ marginLeft: depth * 18 }}>
+      <div className={`p-3 rounded ${depth === 0 ? "bg-card border border-border" : "bg-secondary"}`} style={{ marginLeft: depth * 18 }}>
         <div className="flex gap-3">
           <img src={avatar} className="w-10 h-10 rounded-full cursor-pointer" onClick={() => goToUser(node.user_id)} />
           <div className="flex-1">
-            <p className="font-semibold cursor-pointer text-blue-600" onClick={() => goToUser(node.user_id)}>
+            <p className="font-semibold cursor-pointer text-primary hover:underline" onClick={() => goToUser(node.user_id)}>
               {author}
             </p>
-            <p className="text-xs text-gray-500">{new Date(node.created_at).toLocaleString()}</p>
-            <p className="mt-2 whitespace-pre-wrap">{node.content}</p>
+            <p className="text-xs text-muted-foreground">{new Date(node.created_at).toLocaleString()}</p>
+            <p className="mt-2 whitespace-pre-wrap text-foreground">{node.content}</p>
 
             <div className="mt-2 flex gap-3">
-              <button className="text-sm underline" onClick={() => setShowReply(!showReply)}>
+              <button className="text-sm underline text-primary" onClick={() => setShowReply(!showReply)}>
                 Reply
               </button>
               {currentUserId === node.user_id && (
-                <button className="text-sm text-red-500 underline" onClick={() => onDelete(node.id)}>
+                <button className="text-sm text-destructive underline" onClick={() => onDelete(node.id)}>
                   Delete
                 </button>
               )}
