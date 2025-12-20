@@ -9,6 +9,7 @@ import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { upvotePost } from "@/lib/upvote";
+import Squares from "@/components/ui/Squares";
 
 const API_URL = import.meta.env.VITE_API_URL;
 const LIMIT = 8;
@@ -83,95 +84,109 @@ const Index = () => {
         </motion.div>
       </AuroraBackground>
 
-      {/* PROJECTS */}
-      <section ref={projectsRef} className="px-4 py-20 md:py-28">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground">Top Projects</h2>
-            <p className="text-muted-foreground mt-2">Featured work from the community</p>
-          </div>
-
-          {loadingProjects ? (
-            <div className="flex justify-center py-12">
-              <Loader2 className="w-8 h-8 animate-spin text-primary" />
-            </div>
-          ) : topProjects.length === 0 ? (
-            <div className="text-center py-12 bg-card border border-border rounded-xl">
-              <p className="text-muted-foreground">No projects posted yet.</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-              {topProjects.map((p: any) => (
-                <ProjectCard
-                  key={p.id}
-                  image={p.cover_image_url}
-                  title={p.title}
-                  author={p.profiles?.full_name || "Unknown"}
-                  techStack={p.tags?.join(", ") || "Project"}
-                  description={p.short_description}
-                  likes_count={p.likes_count}
-                  onClick={() => navigate(`/projects/${p.id}`)}
-                  onUpvote={async () => {
-                    await upvotePost(p.id, accessToken, API_URL);
-                    refetchProjects();
-                  }}
-                />
-              ))}
-            </div>
-          )}
-
-          <div className="flex justify-center mt-12">
-            <Button onClick={() => navigate("/projects")} size="lg" variant="secondary">
-              See all projects
-            </Button>
-          </div>
+      {/* CONTENT WITH SQUARES BACKGROUND */}
+      <div className="relative">
+        {/* Squares Background */}
+        <div className="absolute inset-0 -z-10">
+          <Squares
+            direction="diagonal"
+            speed={0.3}
+            borderColor="hsl(var(--border) / 0.3)"
+            squareSize={50}
+            hoverFillColor="hsl(var(--primary) / 0.1)"
+          />
         </div>
-      </section>
 
-      {/* BLOGS */}
-      <section ref={blogsRef} className="px-4 py-20 md:py-28 bg-secondary/30">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground">Developer Blogs</h2>
-            <p className="text-muted-foreground mt-2">Insights and tutorials from developers</p>
+        {/* PROJECTS */}
+        <section ref={projectsRef} className="px-4 py-20 md:py-28 relative">
+          <div className="max-w-7xl mx-auto">
+            <div className="text-center mb-12">
+              <h2 className="text-3xl md:text-4xl font-bold text-foreground">Top Projects</h2>
+              <p className="text-muted-foreground mt-2">Featured work from the community</p>
+            </div>
+
+            {loadingProjects ? (
+              <div className="flex justify-center py-12">
+                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+              </div>
+            ) : topProjects.length === 0 ? (
+              <div className="text-center py-12 bg-card/80 backdrop-blur-sm border border-border rounded-xl">
+                <p className="text-muted-foreground">No projects posted yet.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                {topProjects.map((p: any) => (
+                  <ProjectCard
+                    key={p.id}
+                    image={p.cover_image_url}
+                    title={p.title}
+                    author={p.profiles?.full_name || "Unknown"}
+                    techStack={p.tags?.join(", ") || "Project"}
+                    description={p.short_description}
+                    likes_count={p.likes_count}
+                    onClick={() => navigate(`/projects/${p.id}`)}
+                    onUpvote={async () => {
+                      await upvotePost(p.id, accessToken, API_URL);
+                      refetchProjects();
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+
+            <div className="flex justify-center mt-12">
+              <Button onClick={() => navigate("/projects")} size="lg" variant="secondary" className="bg-card/80 backdrop-blur-sm border-border">
+                See all projects
+              </Button>
+            </div>
           </div>
+        </section>
 
-          {loadingBlogs ? (
-            <div className="flex justify-center py-12">
-              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        {/* BLOGS */}
+        <section ref={blogsRef} className="px-4 py-20 md:py-28 relative">
+          <div className="max-w-7xl mx-auto">
+            <div className="text-center mb-12">
+              <h2 className="text-3xl md:text-4xl font-bold text-foreground">Developer Blogs</h2>
+              <p className="text-muted-foreground mt-2">Insights and tutorials from developers</p>
             </div>
-          ) : topBlogs.length === 0 ? (
-            <div className="text-center py-12 bg-card border border-border rounded-xl">
-              <p className="text-muted-foreground">No blogs posted yet.</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-              {topBlogs.map((b: any) => (
-                <ProjectCard
-                  key={b.id}
-                  image={b.cover_image_url}
-                  title={b.title}
-                  author={b.profiles?.full_name || "Unknown"}
-                  techStack={b.tags?.join(", ") || "Blog"}
-                  description={b.short_description}
-                  likes_count={b.likes_count}
-                  onClick={() => navigate(`/blogs/${b.id}`)}
-                  onUpvote={async () => {
-                    await upvotePost(b.id, accessToken, API_URL);
-                    refetchBlogs();
-                  }}
-                />
-              ))}
-            </div>
-          )}
 
-          <div className="flex justify-center mt-12">
-            <Button onClick={() => navigate("/blogs")} size="lg" variant="secondary">
-              See all blogs
-            </Button>
+            {loadingBlogs ? (
+              <div className="flex justify-center py-12">
+                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+              </div>
+            ) : topBlogs.length === 0 ? (
+              <div className="text-center py-12 bg-card/80 backdrop-blur-sm border border-border rounded-xl">
+                <p className="text-muted-foreground">No blogs posted yet.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                {topBlogs.map((b: any) => (
+                  <ProjectCard
+                    key={b.id}
+                    image={b.cover_image_url}
+                    title={b.title}
+                    author={b.profiles?.full_name || "Unknown"}
+                    techStack={b.tags?.join(", ") || "Blog"}
+                    description={b.short_description}
+                    likes_count={b.likes_count}
+                    onClick={() => navigate(`/blogs/${b.id}`)}
+                    onUpvote={async () => {
+                      await upvotePost(b.id, accessToken, API_URL);
+                      refetchBlogs();
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+
+            <div className="flex justify-center mt-12">
+              <Button onClick={() => navigate("/blogs")} size="lg" variant="secondary" className="bg-card/80 backdrop-blur-sm border-border">
+                See all blogs
+              </Button>
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      </div>
     </div>
   );
 };
