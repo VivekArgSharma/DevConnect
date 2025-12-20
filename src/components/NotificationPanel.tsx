@@ -3,6 +3,8 @@ import React, { useEffect, useState } from "react";
 import { getAllNotifications, markNotificationsRead } from "@/lib/notifications";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNotificationsContext } from "@/contexts/NotificationsContext";
+import { Bell, Check } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface NotificationPanelProps {
   onClose?: () => void;
@@ -12,7 +14,7 @@ export default function NotificationPanel({ onClose }: NotificationPanelProps) {
   const { user } = useAuth() as any;
   const [notifications, setNotifications] = useState<any[]>([]);
 
-  const { queue, clearQueue } = useNotificationsContext(); // ⭐ Add clearQueue
+  const { queue, clearQueue } = useNotificationsContext();
 
   useEffect(() => {
     if (!user) return;
@@ -34,9 +36,8 @@ export default function NotificationPanel({ onClose }: NotificationPanelProps) {
 
     await markNotificationsRead(user.id);
 
-    // ⭐ INSTANLY CLEAR UI LIST
-    setNotifications([]); 
-    clearQueue(); // removes realtime ones too
+    setNotifications([]);
+    clearQueue();
 
     if (onClose) onClose();
   }
@@ -44,38 +45,56 @@ export default function NotificationPanel({ onClose }: NotificationPanelProps) {
   const merged = [...queue, ...notifications];
 
   return (
-    <div className="bg-white shadow-xl rounded-lg border border-slate-200 overflow-hidden">
-      <div className="flex items-center justify-between p-3 border-b">
-        <div className="font-medium">Notifications</div>
-        <div className="text-sm text-slate-500">{merged.length} total</div>
+    <div className="bg-card border border-border rounded-xl shadow-surface-lg overflow-hidden w-80 animate-scale-in">
+      {/* Header */}
+      <div className="flex items-center justify-between p-4 border-b border-border">
+        <div className="flex items-center gap-2">
+          <Bell className="w-4 h-4 text-primary" />
+          <span className="font-semibold text-foreground">Notifications</span>
+        </div>
+        <span className="text-xs text-muted-foreground px-2 py-0.5 bg-secondary rounded-full">
+          {merged.length}
+        </span>
       </div>
 
-      <div className="max-h-96 overflow-auto">
+      {/* Notification List */}
+      <div className="max-h-80 overflow-auto">
         {merged.length === 0 ? (
-          <div className="p-4 text-sm text-slate-500">No notifications yet.</div>
+          <div className="p-6 text-center">
+            <div className="w-12 h-12 rounded-full bg-secondary flex items-center justify-center mx-auto mb-3">
+              <Bell className="w-5 h-5 text-muted-foreground" />
+            </div>
+            <p className="text-sm text-muted-foreground">No notifications yet</p>
+          </div>
         ) : (
           merged.map((n: any) => (
             <div
               key={n.id}
-              className="p-3 border-b hover:bg-slate-50 cursor-pointer"
+              className="p-4 border-b border-border/50 hover:bg-secondary/50 transition-colors cursor-pointer"
             >
-              <div className="text-sm">{n.message}</div>
-              <div className="text-xs text-slate-400">
+              <p className="text-sm text-foreground leading-relaxed">{n.message}</p>
+              <p className="text-xs text-muted-foreground mt-1">
                 {n.created_at ? new Date(n.created_at).toLocaleString() : ""}
-              </div>
+              </p>
             </div>
           ))
         )}
       </div>
 
-      <div className="p-2 flex justify-end border-t bg-slate-50">
-        <button
-          onClick={handleMarkAllRead}
-          className="text-sm px-3 py-1 rounded-md bg-slate-200 hover:bg-slate-300"
-        >
-          Mark all read
-        </button>
-      </div>
+      {/* Footer */}
+      {merged.length > 0 && (
+        <div className="p-3 border-t border-border bg-secondary/30">
+          <Button
+            onClick={handleMarkAllRead}
+            variant="ghost"
+            size="sm"
+            className="w-full gap-2 text-muted-foreground hover:text-foreground"
+          >
+            <Check className="w-4 h-4" />
+            Mark all as read
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
