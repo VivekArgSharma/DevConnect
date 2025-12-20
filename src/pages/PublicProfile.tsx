@@ -4,6 +4,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { ProjectCard } from "@/components/ui/project-card";
 import FollowButton from "@/components/FollowButton";
 import axios from "axios";
+import Squares from "@/components/ui/Squares";
 
 interface Profile {
   id: string;
@@ -96,98 +97,109 @@ export default function PublicProfile() {
   }
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
-      <div className="bg-white p-6 rounded-lg shadow-sm">
+    <>
+      <div className="fixed inset-0 -z-10">
+        <Squares
+          direction="diagonal"
+          speed={0.3}
+          borderColor="hsl(var(--border) / 0.3)"
+          squareSize={50}
+          hoverFillColor="hsl(var(--primary) / 0.1)"
+        />
+      </div>
+      <div className="p-6 max-w-4xl mx-auto relative">
+        <div className="bg-card/80 backdrop-blur-sm p-6 rounded-lg border border-border">
 
-        {/* HEADER */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <img
-              src={profile.avatar_url || "/default-avatar.png"}
-              className="w-20 h-20 rounded-full object-cover"
-              alt="avatar"
-            />
-            <div>
-              <h2 className="text-2xl font-bold">{profile.full_name}</h2>
-              <p className="text-gray-600">@{profile.username}</p>
+          {/* HEADER */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <img
+                src={profile.avatar_url || "/default-avatar.png"}
+                className="w-20 h-20 rounded-full object-cover border border-border"
+                alt="avatar"
+              />
+              <div>
+                <h2 className="text-2xl font-bold text-foreground">{profile.full_name}</h2>
+                <p className="text-muted-foreground">@{profile.username}</p>
+              </div>
+            </div>
+
+            {/* Right-side buttons */}
+            <div className="flex gap-3">
+              {userId && <FollowButton targetUserId={userId} />}
+
+              {currentUserId && currentUserId !== userId && (
+                <button
+                  onClick={handleDM}
+                  className="px-3 py-1 rounded bg-primary text-primary-foreground hover:bg-primary/90"
+                >
+                  DM
+                </button>
+              )}
             </div>
           </div>
 
-          {/* Right-side buttons */}
-          <div className="flex gap-3">
-            {userId && <FollowButton targetUserId={userId} />}
+          {/* BIO */}
+          {profile.bio && (
+            <div className="mt-6 p-4 bg-secondary border border-border rounded-lg">
+              <p className="text-sm text-foreground">{profile.bio}</p>
+            </div>
+          )}
 
-            {currentUserId && currentUserId !== userId && (
-              <button
-                onClick={handleDM}
-                className="px-3 py-1 rounded bg-blue-600 text-white hover:bg-blue-700"
+          {/* WEBSITE + SKILLS */}
+          <div className="mt-4 flex flex-wrap gap-3">
+            {profile.website && (
+              <a
+                className="text-sm text-primary hover:underline"
+                href={profile.website}
+                target="_blank"
+                rel="noreferrer"
               >
-                DM
-              </button>
+                {profile.website}
+              </a>
+            )}
+
+            {profile.skills?.map((s) => (
+              <span key={s} className="text-xs bg-secondary text-foreground px-2 py-1 rounded">
+                {s}
+              </span>
+            ))}
+          </div>
+
+          {/* POSTS */}
+          <div className="mt-6">
+            <h3 className="text-lg font-medium mb-3 text-foreground">Posts</h3>
+
+            {posts?.length === 0 && (
+              <div className="text-sm text-muted-foreground">
+                This user has no posts yet.
+              </div>
+            )}
+
+            {posts && (
+              <div className="grid grid-cols-1 gap-4">
+                {posts.map((post: any) => (
+                  <ProjectCard
+                    key={post.id}
+                    image={post.image_url || "/placeholder.png"}
+                    title={post.title}
+                    description={post.excerpt || post.description || ""}
+                    author={profile.full_name || ""}
+                    techStack={post.tags?.join(", ")}
+                    onClick={() =>
+                      navigate(
+                        post.type === "blog"
+                          ? `/blogs/${post.id}`
+                          : `/projects/${post.id}`
+                      )
+                    }
+                  />
+                ))}
+              </div>
             )}
           </div>
         </div>
-
-        {/* BIO */}
-        {profile.bio && (
-          <div className="mt-6 p-4 bg-white border rounded-lg">
-            <p className="text-sm text-slate-700">{profile.bio}</p>
-          </div>
-        )}
-
-        {/* WEBSITE + SKILLS */}
-        <div className="mt-4 flex flex-wrap gap-3">
-          {profile.website && (
-            <a
-              className="text-sm text-sky-600"
-              href={profile.website}
-              target="_blank"
-              rel="noreferrer"
-            >
-              {profile.website}
-            </a>
-          )}
-
-          {profile.skills?.map((s) => (
-            <span key={s} className="text-xs bg-slate-100 px-2 py-1 rounded">
-              {s}
-            </span>
-          ))}
-        </div>
-
-        {/* POSTS */}
-        <div className="mt-6">
-          <h3 className="text-lg font-medium mb-3">Posts</h3>
-
-          {posts?.length === 0 && (
-            <div className="text-sm text-slate-500">
-              This user has no posts yet.
-            </div>
-          )}
-
-          {posts && (
-            <div className="grid grid-cols-1 gap-4">
-              {posts.map((post: any) => (
-                <ProjectCard
-                  key={post.id}
-                  image={post.image_url || "/placeholder.png"}
-                  title={post.title}
-                  description={post.excerpt || post.description || ""}
-                  author={profile.full_name || ""}
-                  techStack={post.tags?.join(", ")}
-                  onClick={() =>
-                    navigate(
-                      post.type === "blog"
-                        ? `/blogs/${post.id}`
-                        : `/projects/${post.id}`
-                    )
-                  }
-                />
-              ))}
-            </div>
-          )}
-        </div>
       </div>
-    </div>
+    </>
   );
 }

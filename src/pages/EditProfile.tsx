@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
 import { Button } from "../components/ui/button";
+import Squares from "@/components/ui/Squares";
 
 type ProfileRow = {
   id: string;
@@ -171,116 +172,128 @@ export default function EditProfile() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto py-12 px-4">
-      <h1 className="text-2xl font-semibold mb-6">Edit Profile</h1>
+    <>
+      <div className="fixed inset-0 -z-10">
+        <Squares
+          direction="diagonal"
+          speed={0.3}
+          borderColor="hsl(var(--border) / 0.3)"
+          squareSize={50}
+          hoverFillColor="hsl(var(--primary) / 0.1)"
+        />
+      </div>
+      <div className="max-w-3xl mx-auto py-12 px-4 relative">
+        <h1 className="text-2xl font-semibold mb-6 text-foreground">Edit Profile</h1>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-6 bg-card/80 backdrop-blur-sm p-6 rounded-xl border border-border">
 
-        {/* AVATAR */}
-        <div>
-          <label className="block mb-2 font-medium">Avatar</label>
+          {/* AVATAR */}
+          <div>
+            <label className="block mb-2 font-medium text-foreground">Avatar</label>
 
-          <div className="flex items-center gap-4">
-            <div className="w-24 h-24 rounded-full overflow-hidden border bg-gray-200">
-              {avatarPreview ? (
-                <img src={avatarPreview} className="w-full h-full object-cover" />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-gray-400">
-                  No Image
+            <div className="flex items-center gap-4">
+              <div className="w-24 h-24 rounded-full overflow-hidden border border-border bg-secondary">
+                {avatarPreview ? (
+                  <img src={avatarPreview} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                    No Image
+                  </div>
+                )}
+              </div>
+
+              <input
+                type="file"
+                accept="image/*"
+                className="text-foreground"
+                onChange={(e) => setAvatarFile(e.target.files?.[0] || null)}
+              />
+            </div>
+          </div>
+
+          {/* FULL NAME */}
+          <div>
+            <label className="block mb-1 text-foreground">Full Name</label>
+            <input
+              className="w-full border border-border bg-background text-foreground rounded px-3 py-2"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+            />
+          </div>
+
+          {/* USERNAME */}
+          <div>
+            <label className="block mb-1 text-foreground">Username</label>
+            <input
+              className="w-full border border-border bg-background text-foreground rounded px-3 py-2"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+            />
+          </div>
+
+          {/* BIO */}
+          <div>
+            <label className="block mb-1 text-foreground">Bio</label>
+            <textarea
+              className="w-full border border-border bg-background text-foreground rounded px-3 py-2"
+              value={bio}
+              rows={3}
+              onChange={(e) => setBio(e.target.value)}
+            />
+          </div>
+
+          {/* WEBSITE */}
+          <div>
+            <label className="block mb-1 text-foreground">Website</label>
+            <input
+              className="w-full border border-border bg-background text-foreground rounded px-3 py-2"
+              value={website}
+              onChange={(e) => setWebsite(e.target.value)}
+            />
+          </div>
+
+          {/* SKILLS */}
+          <div>
+            <label className="block mb-1 text-foreground">Skills</label>
+
+            <div className="flex flex-wrap gap-2 mb-2">
+              {skills.map((s) => (
+                <div
+                  key={s}
+                  className="px-3 py-1 bg-primary/10 text-primary rounded-full flex items-center gap-2"
+                >
+                  {s}
+                  <button
+                    type="button"
+                    onClick={() => removeSkill(s)}
+                    className="text-destructive font-bold"
+                  >
+                    ×
+                  </button>
                 </div>
-              )}
+              ))}
             </div>
 
             <input
-              type="file"
-              accept="image/*"
-              onChange={(e) => setAvatarFile(e.target.files?.[0] || null)}
+              className="w-full border border-border bg-background text-foreground rounded px-3 py-2"
+              placeholder="Type skill and press Enter"
+              value={skillInput}
+              onChange={(e) => setSkillInput(e.target.value)}
+              onKeyDown={handleSkillKey}
             />
           </div>
-        </div>
 
-        {/* FULL NAME */}
-        <div>
-          <label className="block mb-1">Full Name</label>
-          <input
-            className="w-full border rounded px-3 py-2"
-            value={fullName}
-            onChange={(e) => setFullName(e.target.value)}
-          />
-        </div>
+          <div className="flex gap-3">
+            <Button type="submit" disabled={loading}>
+              {loading ? "Saving..." : "Save"}
+            </Button>
 
-        {/* USERNAME */}
-        <div>
-          <label className="block mb-1">Username</label>
-          <input
-            className="w-full border rounded px-3 py-2"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-          />
-        </div>
-
-        {/* BIO */}
-        <div>
-          <label className="block mb-1">Bio</label>
-          <textarea
-            className="w-full border rounded px-3 py-2"
-            value={bio}
-            rows={3}
-            onChange={(e) => setBio(e.target.value)}
-          />
-        </div>
-
-        {/* WEBSITE */}
-        <div>
-          <label className="block mb-1">Website</label>
-          <input
-            className="w-full border rounded px-3 py-2"
-            value={website}
-            onChange={(e) => setWebsite(e.target.value)}
-          />
-        </div>
-
-        {/* SKILLS */}
-        <div>
-          <label className="block mb-1">Skills</label>
-
-          <div className="flex flex-wrap gap-2 mb-2">
-            {skills.map((s) => (
-              <div
-                key={s}
-                className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full flex items-center gap-2"
-              >
-                {s}
-                <button
-                  type="button"
-                  onClick={() => removeSkill(s)}
-                  className="text-red-500 font-bold"
-                >
-                  ×
-                </button>
-              </div>
-            ))}
+            <Button type="button" variant="secondary" onClick={() => navigate("/profile")}>
+              Cancel
+            </Button>
           </div>
-
-          <input
-            className="w-full border rounded px-3 py-2"
-            placeholder="Type skill and press Enter"
-            value={skillInput}
-            onChange={(e) => setSkillInput(e.target.value)}
-            onKeyDown={handleSkillKey}
-          />
-        </div>
-
-        <div className="flex gap-3">
-          <Button type="submit" disabled={loading}>
-            {loading ? "Saving..." : "Save"}
-          </Button>
-
-          <Button type="button" variant="secondary" onClick={() => navigate("/profile")}>
-            Cancel
-          </Button>
-        </div>
-      </form>
-    </div>
+        </form>
+      </div>
+    </>
   );
 }
