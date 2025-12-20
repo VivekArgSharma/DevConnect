@@ -6,8 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import TagInput from "@/components/TagInput";
-// If your DMButton path is different, adjust:
 import DMButton from "@/components/DMButton";
+import { Users, Plus, Send, Inbox, ExternalLink, Github, X, Loader2 } from "lucide-react";
 
 const API_URL =
   import.meta.env.VITE_API_URL?.endsWith("/api")
@@ -47,11 +47,10 @@ type ReceivedApplication = {
     id: string;
     title: string;
     status: "open" | "closed";
-    // user_id is not strictly needed on frontend here
   };
 };
 
-type SentApplication = ReceivedApplication; // same shape from backend
+type SentApplication = ReceivedApplication;
 
 type ActiveTab = "find" | "for-team" | "your-apps";
 
@@ -314,7 +313,6 @@ export default function TeamFinder() {
   /* ------------------- EDIT APPLICATION ------------------- */
 
   function startEditApplication(app: SentApplication) {
-    // Only allow if parent post is still open
     if (app.team_posts.status !== "open") return;
     setEditingApplication(app);
     setEditName(app.name || "");
@@ -375,7 +373,7 @@ export default function TeamFinder() {
     }
   }
 
-  /* ------------------- ✅ DELETE APPLICATION (BOTH SIDES) ------------------- */
+  /* ------------------- DELETE APPLICATION ------------------- */
 
   async function handleDeleteApplication(appId: string) {
     if (!accessToken) return;
@@ -391,9 +389,7 @@ export default function TeamFinder() {
         },
       });
 
-      // Remove from "your applications"
       setSentApplications((prev) => prev.filter((a) => a.id !== appId));
-      // Remove from "applications for your team"
       setReceivedApplications((prev) => prev.filter((a) => a.id !== appId));
 
       if (selectedReceivedApp?.id === appId) {
@@ -413,93 +409,143 @@ export default function TeamFinder() {
 
   /* ------------------- RENDER HELPERS ------------------- */
 
+  const tabs = [
+    { id: "find" as const, label: "Find Teammates", icon: Users },
+    { id: "for-team" as const, label: "Received", icon: Inbox },
+    { id: "your-apps" as const, label: "Sent", icon: Send },
+  ];
+
   function renderTeamPosts() {
     return (
-      <div className="space-y-4">
-        <div className="flex items-center justify-between gap-4 mb-4">
-          <h2 className="font-semibold text-lg">Find Teammates</h2>
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <h2 className="text-xl font-semibold text-foreground">Open Teams</h2>
+            <p className="text-sm text-muted-foreground mt-1">
+              Browse teams looking for members
+            </p>
+          </div>
           {user && (
             <Button
-              variant="outline"
               onClick={() => setShowCreatePostForm((s) => !s)}
+              className="gap-2"
             >
-              {showCreatePostForm ? "Cancel" : "Create Team Post"}
+              {showCreatePostForm ? (
+                <>
+                  <X className="w-4 h-4" />
+                  Cancel
+                </>
+              ) : (
+                <>
+                  <Plus className="w-4 h-4" />
+                  Post Team
+                </>
+              )}
             </Button>
           )}
         </div>
 
+        {/* Create Post Form */}
         {showCreatePostForm && (
           <form
             onSubmit={handleCreatePost}
-            className="mb-8 border rounded-xl p-4 flex flex-col gap-4 bg-white/60 backdrop-blur"
+            className="rounded-2xl border border-border bg-card p-6 space-y-4"
           >
-            <h3 className="font-semibold text-base">Post a Team Requirement</h3>
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                <Plus className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-foreground">Create Team Post</h3>
+                <p className="text-xs text-muted-foreground">Share what you're building</p>
+              </div>
+            </div>
 
             <Input
-              placeholder="Hackathon / Project title"
+              placeholder="Project / Hackathon title"
               value={newPost.title}
               onChange={(e) => setNewPost((p) => ({ ...p, title: e.target.value }))}
             />
 
             <Textarea
-              placeholder="Short description of what you're building"
+              placeholder="What are you building? Describe your project..."
               value={newPost.description}
               onChange={(e) =>
                 setNewPost((p) => ({ ...p, description: e.target.value }))
               }
+              className="min-h-[100px]"
             />
 
-            <Input
-              placeholder="Image URL (hackathon banner / project image)"
-              value={newPost.image_url}
-              onChange={(e) =>
-                setNewPost((p) => ({ ...p, image_url: e.target.value }))
-              }
-            />
-
-            <Input
-              type="number"
-              placeholder="Current team members (e.g. 2)"
-              value={newPost.current_members}
-              onChange={(e) =>
-                setNewPost((p) => ({ ...p, current_members: e.target.value }))
-              }
-            />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Input
+                placeholder="Banner image URL (optional)"
+                value={newPost.image_url}
+                onChange={(e) =>
+                  setNewPost((p) => ({ ...p, image_url: e.target.value }))
+                }
+              />
+              <Input
+                type="number"
+                placeholder="Current team size"
+                value={newPost.current_members}
+                onChange={(e) =>
+                  setNewPost((p) => ({ ...p, current_members: e.target.value }))
+                }
+              />
+            </div>
 
             <Textarea
-              placeholder="Requirements (what roles/skills you need)"
+              placeholder="What skills/roles are you looking for?"
               value={newPost.requirements}
               onChange={(e) =>
                 setNewPost((p) => ({ ...p, requirements: e.target.value }))
               }
             />
 
-            <Input
-              placeholder="Current project live link (optional)"
-              value={newPost.hackathon_link}
-              onChange={(e) =>
-                setNewPost((p) => ({ ...p, hackathon_link: e.target.value }))
-              }
-            />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Input
+                placeholder="Live project link (optional)"
+                value={newPost.hackathon_link}
+                onChange={(e) =>
+                  setNewPost((p) => ({ ...p, hackathon_link: e.target.value }))
+                }
+              />
+              <Input
+                placeholder="GitHub repo (optional)"
+                value={newPost.github_link}
+                onChange={(e) =>
+                  setNewPost((p) => ({ ...p, github_link: e.target.value }))
+                }
+              />
+            </div>
 
-            <Input
-              placeholder="GitHub repo link (optional)"
-              value={newPost.github_link}
-              onChange={(e) =>
-                setNewPost((p) => ({ ...p, github_link: e.target.value }))
-              }
-            />
-
-            <Button type="submit" disabled={createPostLoading}>
-              {createPostLoading ? "Posting..." : "Publish Requirement"}
-            </Button>
+            <div className="flex justify-end">
+              <Button type="submit" disabled={createPostLoading} className="gap-2">
+                {createPostLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Publishing...
+                  </>
+                ) : (
+                  "Publish"
+                )}
+              </Button>
+            </div>
           </form>
         )}
 
+        {/* Posts Grid */}
         {loadingPosts ? (
-          <p>Loading posts...</p>
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="w-6 h-6 animate-spin text-primary" />
+          </div>
         ) : teamPosts.length === 0 ? (
-          <p className="text-sm text-gray-500">No open team posts yet.</p>
+          <div className="text-center py-12 rounded-2xl border border-dashed border-border bg-card/50">
+            <Users className="w-12 h-12 mx-auto text-muted-foreground/50 mb-3" />
+            <p className="text-muted-foreground">No open teams yet</p>
+            <p className="text-sm text-muted-foreground/70 mt-1">Be the first to post!</p>
+          </div>
         ) : (
           <div className="grid gap-4 md:grid-cols-2">
             {teamPosts.map((post) => {
@@ -507,82 +553,107 @@ export default function TeamFinder() {
               return (
                 <div
                   key={post.id}
-                  className="border rounded-xl p-4 bg-white/70 backdrop-blur flex flex-col gap-3"
+                  className="group rounded-2xl border border-border bg-card overflow-hidden hover:border-primary/30 transition-all duration-300"
                 >
                   {post.image_url && (
-                    <img
-                      src={post.image_url}
-                      alt={post.title}
-                      className="w-full h-40 object-cover rounded-lg"
-                    />
+                    <div className="relative h-40 overflow-hidden">
+                      <img
+                        src={post.image_url}
+                        alt={post.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-card/80 to-transparent" />
+                    </div>
                   )}
 
-                  <div className="flex items-start justify-between gap-4">
+                  <div className="p-5 space-y-4">
                     <div>
-                      <h3 className="font-semibold text-base mb-1">{post.title}</h3>
+                      <h3 className="font-semibold text-lg text-foreground line-clamp-1">
+                        {post.title}
+                      </h3>
                       {post.description && (
-                        <p className="text-sm text-gray-700 line-clamp-3">
+                        <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
                           {post.description}
                         </p>
                       )}
                     </div>
-                  </div>
 
-                  {post.current_members != null && (
-                    <p className="text-xs text-gray-500">
-                      Current team members: {post.current_members}
-                    </p>
-                  )}
-
-                  {post.requirements && (
-                    <p className="text-sm">
-                      <span className="font-semibold">Looking for: </span>
-                      {post.requirements}
-                    </p>
-                  )}
-
-                  <div className="flex flex-col gap-1 text-xs mt-1">
-                    {post.hackathon_link && (
-                      <a
-                        href={post.hackathon_link}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-blue-600 hover:underline"
-                      >
-                        Project / Hackathon Link
-                      </a>
+                    {post.current_members != null && (
+                      <div className="flex items-center gap-2">
+                        <div className="flex -space-x-2">
+                          {[...Array(Math.min(post.current_members, 4))].map((_, i) => (
+                            <div
+                              key={i}
+                              className="w-7 h-7 rounded-full bg-primary/20 border-2 border-card flex items-center justify-center"
+                            >
+                              <span className="text-xs text-primary font-medium">
+                                {i + 1}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                        <span className="text-xs text-muted-foreground">
+                          {post.current_members} member{post.current_members !== 1 && "s"}
+                        </span>
+                      </div>
                     )}
-                    {post.github_link && (
-                      <a
-                        href={post.github_link}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-blue-600 hover:underline"
-                      >
-                        GitHub Repo
-                      </a>
+
+                    {post.requirements && (
+                      <div className="p-3 rounded-xl bg-muted/50">
+                        <p className="text-xs font-medium text-primary mb-1">Looking for</p>
+                        <p className="text-sm text-foreground line-clamp-2">
+                          {post.requirements}
+                        </p>
+                      </div>
                     )}
-                  </div>
 
-                  <div className="flex items-center justify-between mt-3 gap-3">
-                    <Button
-                      size="sm"
-                      variant="default"
-                      onClick={() => startApply(post)}
-                      disabled={isOwner}
-                    >
-                      {isOwner ? "You created this" : "Apply"}
-                    </Button>
+                    {(post.hackathon_link || post.github_link) && (
+                      <div className="flex flex-wrap gap-2">
+                        {post.hackathon_link && (
+                          <a
+                            href={post.hackathon_link}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline"
+                          >
+                            <ExternalLink className="w-3.5 h-3.5" />
+                            Project
+                          </a>
+                        )}
+                        {post.github_link && (
+                          <a
+                            href={post.github_link}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline"
+                          >
+                            <Github className="w-3.5 h-3.5" />
+                            GitHub
+                          </a>
+                        )}
+                      </div>
+                    )}
 
-                    {isOwner && (
+                    <div className="flex items-center gap-2 pt-2">
                       <Button
                         size="sm"
-                        variant="destructive"
-                        onClick={() => handleClosePost(post)}
+                        onClick={() => startApply(post)}
+                        disabled={isOwner}
+                        className="flex-1"
                       >
-                        Close applications
+                        {isOwner ? "Your post" : "Apply"}
                       </Button>
-                    )}
+
+                      {isOwner && (
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => handleClosePost(post)}
+                        >
+                          Close
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </div>
               );
@@ -596,57 +667,73 @@ export default function TeamFinder() {
   function renderReceivedApplications() {
     if (!user) {
       return (
-        <p className="text-sm text-gray-500">
-          Login to see applications for your team.
-        </p>
+        <div className="text-center py-12 rounded-2xl border border-dashed border-border bg-card/50">
+          <Inbox className="w-12 h-12 mx-auto text-muted-foreground/50 mb-3" />
+          <p className="text-muted-foreground">Login to see received applications</p>
+        </div>
       );
     }
 
     return (
-      <div className="flex flex-col md:flex-row gap-6">
-        <div className="flex-1">
-          <h2 className="font-semibold text-lg mb-4">Applications for Your Team</h2>
+      <div className="flex flex-col lg:flex-row gap-6">
+        {/* List */}
+        <div className="flex-1 space-y-4">
+          <div>
+            <h2 className="text-xl font-semibold text-foreground">Received Applications</h2>
+            <p className="text-sm text-muted-foreground mt-1">
+              People who want to join your teams
+            </p>
+          </div>
+
           {loadingReceived ? (
-            <p>Loading applications...</p>
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-6 h-6 animate-spin text-primary" />
+            </div>
           ) : receivedApplications.length === 0 ? (
-            <p className="text-sm text-gray-500">No one has applied yet.</p>
+            <div className="text-center py-12 rounded-2xl border border-dashed border-border bg-card/50">
+              <Inbox className="w-12 h-12 mx-auto text-muted-foreground/50 mb-3" />
+              <p className="text-muted-foreground">No applications yet</p>
+            </div>
           ) : (
             <div className="space-y-3">
               {receivedApplications.map((app) => (
                 <div
                   key={app.id}
-                  className="border rounded-xl p-3 bg-white/70 cursor-pointer hover:bg-gray-50"
                   onClick={() => setSelectedReceivedApp(app)}
+                  className={`rounded-xl border p-4 cursor-pointer transition-all duration-200 ${
+                    selectedReceivedApp?.id === app.id
+                      ? "border-primary bg-primary/5"
+                      : "border-border bg-card hover:border-primary/30"
+                  }`}
                 >
-                  <div className="flex items-center justify-between gap-4">
-                    <div>
-                      <p className="font-semibold text-sm">{app.name}</p>
-                      <p className="text-xs text-gray-500">
-                        For: {app.team_posts?.title || "Unknown post"}
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-foreground">{app.name}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        For: {app.team_posts?.title || "Unknown"}
                       </p>
                     </div>
-                    <span className="text-[10px] uppercase tracking-wide text-gray-500">
+                    <span className="text-xs text-muted-foreground shrink-0">
                       {new Date(app.created_at).toLocaleDateString()}
                     </span>
                   </div>
 
                   {app.skills && app.skills.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mt-2">
-                      {app.skills.map((s) => (
+                    <div className="flex flex-wrap gap-1.5 mt-3">
+                      {app.skills.slice(0, 4).map((s) => (
                         <span
                           key={s}
-                          className="text-[10px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-700"
+                          className="text-xs px-2 py-1 rounded-full bg-primary/10 text-primary"
                         >
                           {s}
                         </span>
                       ))}
+                      {app.skills.length > 4 && (
+                        <span className="text-xs px-2 py-1 rounded-full bg-muted text-muted-foreground">
+                          +{app.skills.length - 4}
+                        </span>
+                      )}
                     </div>
-                  )}
-
-                  {app.motivation && (
-                    <p className="mt-2 text-xs text-gray-700 line-clamp-2">
-                      {app.motivation}
-                    </p>
                   )}
                 </div>
               ))}
@@ -654,87 +741,86 @@ export default function TeamFinder() {
           )}
         </div>
 
+        {/* Detail Panel */}
         <div className="flex-1">
           {selectedReceivedApp ? (
-            <div className="border rounded-xl p-4 bg-white/80">
-              <h3 className="font-semibold text-base mb-1">
-                {selectedReceivedApp.name}
-              </h3>
-              <p className="text-xs text-gray-500 mb-3">
-                Applied for: {selectedReceivedApp.team_posts?.title || "Unknown post"}
-              </p>
+            <div className="sticky top-4 rounded-2xl border border-border bg-card p-6 space-y-5">
+              <div>
+                <h3 className="text-lg font-semibold text-foreground">
+                  {selectedReceivedApp.name}
+                </h3>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  Applied for: {selectedReceivedApp.team_posts?.title}
+                </p>
+              </div>
 
-              {selectedReceivedApp.skills &&
-                selectedReceivedApp.skills.length > 0 && (
-                  <div className="mb-3">
-                    <p className="text-xs font-semibold mb-1">Skills</p>
-                    <div className="flex flex-wrap gap-1">
-                      {selectedReceivedApp.skills.map((s) => (
-                        <span
-                          key={s}
-                          className="text-[10px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-700"
+              {selectedReceivedApp.skills && selectedReceivedApp.skills.length > 0 && (
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground mb-2">Skills</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {selectedReceivedApp.skills.map((s) => (
+                      <span
+                        key={s}
+                        className="text-xs px-2.5 py-1 rounded-full bg-primary/10 text-primary"
+                      >
+                        {s}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {selectedReceivedApp.projects && selectedReceivedApp.projects.length > 0 && (
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground mb-2">Projects</p>
+                  <div className="space-y-2">
+                    {selectedReceivedApp.projects.map((p, idx) => (
+                      <div key={idx} className="rounded-xl bg-muted/50 p-3">
+                        <a
+                          href={p.link}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-sm text-primary hover:underline font-medium break-all"
                         >
-                          {s}
-                        </span>
-                      ))}
-                    </div>
+                          {p.link}
+                        </a>
+                        {p.description && (
+                          <p className="mt-1.5 text-sm text-muted-foreground whitespace-pre-line">
+                            {p.description}
+                          </p>
+                        )}
+                      </div>
+                    ))}
                   </div>
-                )}
-
-              {selectedReceivedApp.projects &&
-                selectedReceivedApp.projects.length > 0 && (
-                  <div className="mb-3">
-                    <p className="text-xs font-semibold mb-1">Projects</p>
-                    <div className="space-y-2">
-                      {selectedReceivedApp.projects.map((p, idx) => (
-                        <div key={idx} className="border rounded-lg p-2 text-xs">
-                          <a
-                            href={p.link}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="text-blue-600 font-medium break-all"
-                          >
-                            {p.link}
-                          </a>
-                          {p.description && (
-                            <p className="mt-1 text-gray-700 whitespace-pre-line">
-                              {p.description}
-                            </p>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                </div>
+              )}
 
               {selectedReceivedApp.motivation && (
-                <div className="mb-4">
-                  <p className="text-xs font-semibold mb-1">
-                    Why they think they fit
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground mb-2">
+                    Why they're a good fit
                   </p>
-                  <p className="text-xs text-gray-800 whitespace-pre-line">
+                  <p className="text-sm text-foreground whitespace-pre-line">
                     {selectedReceivedApp.motivation}
                   </p>
                 </div>
               )}
 
-              {/* DM + Review Done */}
-              <div className="flex items-center justify-between mt-4">
+              <div className="flex items-center gap-3 pt-2">
                 <DMButton otherUserId={selectedReceivedApp.applicant_id} />
                 <Button
                   size="sm"
                   variant="outline"
                   onClick={() => handleDeleteApplication(selectedReceivedApp.id)}
                 >
-                  Review done
+                  Mark reviewed
                 </Button>
               </div>
             </div>
           ) : (
-            <p className="text-sm text-gray-500 mt-6">
-              Click on an application on the left to view full details, DM the
-              applicant, or mark as reviewed.
-            </p>
+            <div className="text-center py-12 rounded-2xl border border-dashed border-border bg-card/50">
+              <p className="text-muted-foreground">Select an application to view details</p>
+            </div>
           )}
         </div>
       </div>
@@ -744,20 +830,34 @@ export default function TeamFinder() {
   function renderSentApplications() {
     if (!user) {
       return (
-        <p className="text-sm text-gray-500">Login to see your applications.</p>
+        <div className="text-center py-12 rounded-2xl border border-dashed border-border bg-card/50">
+          <Send className="w-12 h-12 mx-auto text-muted-foreground/50 mb-3" />
+          <p className="text-muted-foreground">Login to see your applications</p>
+        </div>
       );
     }
 
     return (
-      <div className="flex flex-col md:flex-row gap-6">
-        <div className="flex-1">
-          <h2 className="font-semibold text-lg mb-4">Your Applications</h2>
-          {loadingSent ? (
-            <p>Loading your applications...</p>
-          ) : sentApplications.length === 0 ? (
-            <p className="text-sm text-gray-500">
-              You haven't applied to any teams yet.
+      <div className="flex flex-col lg:flex-row gap-6">
+        {/* List */}
+        <div className="flex-1 space-y-4">
+          <div>
+            <h2 className="text-xl font-semibold text-foreground">Your Applications</h2>
+            <p className="text-sm text-muted-foreground mt-1">
+              Track your team applications
             </p>
+          </div>
+
+          {loadingSent ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-6 h-6 animate-spin text-primary" />
+            </div>
+          ) : sentApplications.length === 0 ? (
+            <div className="text-center py-12 rounded-2xl border border-dashed border-border bg-card/50">
+              <Send className="w-12 h-12 mx-auto text-muted-foreground/50 mb-3" />
+              <p className="text-muted-foreground">No applications sent yet</p>
+              <p className="text-sm text-muted-foreground/70 mt-1">Find a team to join!</p>
+            </div>
           ) : (
             <div className="space-y-3">
               {sentApplications.map((app) => {
@@ -765,30 +865,34 @@ export default function TeamFinder() {
                 return (
                   <div
                     key={app.id}
-                    className="border rounded-xl p-3 bg-white/70 flex flex-col gap-2"
+                    className="rounded-xl border border-border bg-card p-4 space-y-3"
                   >
-                    <div className="flex items-center justify-between gap-4">
-                      <div>
-                        <p className="font-semibold text-sm">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-foreground">
                           {app.team_posts?.title || "Team post"}
                         </p>
-                        <p className="text-xs text-gray-500">Applied as: {app.name}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          Applied as: {app.name}
+                        </p>
                       </div>
                       <span
-                        className={`text-[10px] uppercase tracking-wide ${
-                          closed ? "text-red-600" : "text-green-600"
+                        className={`text-xs font-medium px-2 py-1 rounded-full ${
+                          closed
+                            ? "bg-destructive/10 text-destructive"
+                            : "bg-green-500/10 text-green-600"
                         }`}
                       >
-                        {closed ? "Application closed" : "Open"}
+                        {closed ? "Closed" : "Open"}
                       </span>
                     </div>
 
                     {app.skills && app.skills.length > 0 && (
-                      <div className="flex flex-wrap gap-1">
-                        {app.skills.map((s) => (
+                      <div className="flex flex-wrap gap-1.5">
+                        {app.skills.slice(0, 4).map((s) => (
                           <span
                             key={s}
-                            className="text-[10px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-700"
+                            className="text-xs px-2 py-1 rounded-full bg-primary/10 text-primary"
                           >
                             {s}
                           </span>
@@ -796,20 +900,14 @@ export default function TeamFinder() {
                       </div>
                     )}
 
-                    {app.motivation && (
-                      <p className="text-xs text-gray-700 line-clamp-2">
-                        {app.motivation}
-                      </p>
-                    )}
-
-                    <div className="flex justify-end mt-1 gap-2">
+                    <div className="flex justify-end gap-2 pt-1">
                       <Button
                         size="sm"
                         variant="outline"
                         disabled={closed}
                         onClick={() => startEditApplication(app)}
                       >
-                        {closed ? "Cannot edit (closed)" : "Edit"}
+                        {closed ? "Locked" : "Edit"}
                       </Button>
                       {closed && (
                         <Button
@@ -828,17 +926,19 @@ export default function TeamFinder() {
           )}
         </div>
 
-        {/* EDIT PANEL */}
+        {/* Edit Panel */}
         <div className="flex-1">
           {editingApplication ? (
             <form
               onSubmit={handleEditSubmit}
-              className="border rounded-xl p-4 bg-white/80 flex flex-col gap-3"
+              className="sticky top-4 rounded-2xl border border-border bg-card p-6 space-y-4"
             >
-              <h3 className="font-semibold text-base mb-1">Edit Application</h3>
-              <p className="text-xs text-gray-500 mb-2">
-                For: {editingApplication.team_posts?.title || "Team post"}
-              </p>
+              <div>
+                <h3 className="text-lg font-semibold text-foreground">Edit Application</h3>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  For: {editingApplication.team_posts?.title}
+                </p>
+              </div>
 
               <Input
                 placeholder="Your name"
@@ -847,31 +947,24 @@ export default function TeamFinder() {
               />
 
               <div>
-                <p className="text-xs font-semibold mb-1">Your skills</p>
+                <p className="text-xs font-medium text-muted-foreground mb-2">Your skills</p>
                 <TagInput value={editSkills} onChange={setEditSkills} />
               </div>
 
               <div>
-                <p className="text-xs font-semibold mb-1">Your projects</p>
+                <p className="text-xs font-medium text-muted-foreground mb-2">Your projects</p>
                 <div className="space-y-2">
                   {editProjects.map((p, idx) => (
-                    <div
-                      key={idx}
-                      className="flex flex-col gap-1 border rounded-lg p-2"
-                    >
+                    <div key={idx} className="rounded-xl bg-muted/50 p-3 space-y-2">
                       <Input
-                        placeholder="Project link (GitHub, deployed app, etc.)"
+                        placeholder="Project link"
                         value={p.link}
-                        onChange={(e) =>
-                          updateEditProject(idx, "link", e.target.value)
-                        }
+                        onChange={(e) => updateEditProject(idx, "link", e.target.value)}
                       />
                       <Textarea
-                        placeholder="Explain what this project is about"
+                        placeholder="Brief description"
                         value={p.description}
-                        onChange={(e) =>
-                          updateEditProject(idx, "description", e.target.value)
-                        }
+                        onChange={(e) => updateEditProject(idx, "description", e.target.value)}
                       />
                     </div>
                   ))}
@@ -880,19 +973,21 @@ export default function TeamFinder() {
                     size="sm"
                     variant="outline"
                     onClick={addEditProject}
+                    className="gap-2"
                   >
-                    + Add another project
+                    <Plus className="w-3.5 h-3.5" />
+                    Add project
                   </Button>
                 </div>
               </div>
 
               <Textarea
-                placeholder="Why are you a good fit for this team?"
+                placeholder="Why are you a good fit?"
                 value={editMotivation}
                 onChange={(e) => setEditMotivation(e.target.value)}
               />
 
-              <div className="flex justify-end gap-2">
+              <div className="flex justify-end gap-2 pt-2">
                 <Button
                   type="button"
                   variant="outline"
@@ -900,16 +995,22 @@ export default function TeamFinder() {
                 >
                   Cancel
                 </Button>
-                <Button type="submit" disabled={editLoading}>
-                  {editLoading ? "Saving..." : "Save changes"}
+                <Button type="submit" disabled={editLoading} className="gap-2">
+                  {editLoading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    "Save"
+                  )}
                 </Button>
               </div>
             </form>
           ) : (
-            <p className="text-sm text-gray-500 mt-6">
-              Select an application on the left to edit it (if the team post is still
-              open).
-            </p>
+            <div className="text-center py-12 rounded-2xl border border-dashed border-border bg-card/50">
+              <p className="text-muted-foreground">Select an application to edit</p>
+            </div>
           )}
         </div>
       </div>
@@ -920,66 +1021,72 @@ export default function TeamFinder() {
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold">Team Finder</h1>
-        <p className="text-sm text-gray-600 mt-1">
-          Find teammates for hackathons & side projects, or apply to join other teams.
-        </p>
+      {/* Header */}
+      <div className="mb-8">
+        <div className="flex items-center gap-3 mb-2">
+          <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center">
+            <Users className="w-6 h-6 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">Team Finder</h1>
+            <p className="text-muted-foreground">
+              Find teammates for hackathons & projects
+            </p>
+          </div>
+        </div>
       </div>
 
-      {/* Tabs under navbar */}
-      <div className="flex gap-3 mb-6 border-b border-gray-200">
-        <button
-          className={`pb-2 text-sm font-medium ${
-            activeTab === "find"
-              ? "border-b-2 border-black text-black"
-              : "text-gray-500"
-          }`}
-          onClick={() => setActiveTab("find")}
-        >
-          Find Teammates
-        </button>
-        <button
-          className={`pb-2 text-sm font-medium ${
-            activeTab === "for-team"
-              ? "border-b-2 border-black text-black"
-              : "text-gray-500"
-          }`}
-          onClick={() => setActiveTab("for-team")}
-        >
-          Applications for your team
-        </button>
-        <button
-          className={`pb-2 text-sm font-medium ${
-            activeTab === "your-apps"
-              ? "border-b-2 border-black text-black"
-              : "text-gray-500"
-          }`}
-          onClick={() => setActiveTab("your-apps")}
-        >
-          Your applications
-        </button>
+      {/* Tabs */}
+      <div className="flex gap-2 mb-8 p-1 rounded-xl bg-muted/50 w-fit">
+        {tabs.map((tab) => {
+          const Icon = tab.icon;
+          const isActive = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
+                isActive
+                  ? "bg-card text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Icon className="w-4 h-4" />
+              <span className="hidden sm:inline">{tab.label}</span>
+            </button>
+          );
+        })}
       </div>
 
-      {/* Tab content */}
-      <div className="space-y-6">
+      {/* Tab Content */}
+      <div>
         {activeTab === "find" && renderTeamPosts()}
         {activeTab === "for-team" && renderReceivedApplications()}
         {activeTab === "your-apps" && renderSentApplications()}
       </div>
 
-      {/* APPLY OVERLAY / MODAL-ish */}
+      {/* Apply Modal */}
       {applyForPost && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl max-w-xl w-full p-6 max-h-[90vh] overflow-y-auto">
-            <h2 className="text-lg font-semibold mb-1">
-              Apply to join &ldquo;{applyForPost.title}&rdquo;
-            </h2>
-            <p className="text-xs text-gray-500 mb-4">
-              Share your skills, projects, and why you&apos;re a good fit.
-            </p>
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-card rounded-2xl border border-border max-w-xl w-full p-6 max-h-[90vh] overflow-y-auto shadow-2xl animate-scale-in">
+            <div className="flex items-start justify-between gap-4 mb-6">
+              <div>
+                <h2 className="text-lg font-semibold text-foreground">
+                  Apply to join "{applyForPost.title}"
+                </h2>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Share your skills and experience
+                </p>
+              </div>
+              <button
+                onClick={() => setApplyForPost(null)}
+                className="p-2 rounded-lg hover:bg-muted transition-colors"
+              >
+                <X className="w-5 h-5 text-muted-foreground" />
+              </button>
+            </div>
 
-            <form onSubmit={handleApplySubmit} className="flex flex-col gap-3">
+            <form onSubmit={handleApplySubmit} className="space-y-4">
               <Input
                 placeholder="Your name"
                 value={applyName}
@@ -987,28 +1094,24 @@ export default function TeamFinder() {
               />
 
               <div>
-                <p className="text-xs font-semibold mb-1">Your skills</p>
+                <p className="text-xs font-medium text-muted-foreground mb-2">Your skills</p>
                 <TagInput value={applySkills} onChange={setApplySkills} />
               </div>
 
               <div>
-                <p className="text-xs font-semibold mb-1">Your projects</p>
+                <p className="text-xs font-medium text-muted-foreground mb-2">Your projects</p>
                 <div className="space-y-2">
                   {applyProjects.map((p, idx) => (
-                    <div key={idx} className="border rounded-lg p-2 flex flex-col gap-1">
+                    <div key={idx} className="rounded-xl bg-muted/50 p-3 space-y-2">
                       <Input
-                        placeholder="Project link (GitHub, deployed app, etc.)"
+                        placeholder="Project link"
                         value={p.link}
-                        onChange={(e) =>
-                          updateApplyProject(idx, "link", e.target.value)
-                        }
+                        onChange={(e) => updateApplyProject(idx, "link", e.target.value)}
                       />
                       <Textarea
-                        placeholder="Explain what this project is about"
+                        placeholder="Brief description"
                         value={p.description}
-                        onChange={(e) =>
-                          updateApplyProject(idx, "description", e.target.value)
-                        }
+                        onChange={(e) => updateApplyProject(idx, "description", e.target.value)}
                       />
                     </div>
                   ))}
@@ -1017,8 +1120,10 @@ export default function TeamFinder() {
                     variant="outline"
                     size="sm"
                     onClick={addApplyProject}
+                    className="gap-2"
                   >
-                    + Add another project
+                    <Plus className="w-3.5 h-3.5" />
+                    Add project
                   </Button>
                 </div>
               </div>
@@ -1029,7 +1134,7 @@ export default function TeamFinder() {
                 onChange={(e) => setApplyMotivation(e.target.value)}
               />
 
-              <div className="flex justify-end gap-2 mt-2">
+              <div className="flex justify-end gap-2 pt-2">
                 <Button
                   type="button"
                   variant="outline"
@@ -1037,8 +1142,15 @@ export default function TeamFinder() {
                 >
                   Cancel
                 </Button>
-                <Button type="submit" disabled={applyLoading}>
-                  {applyLoading ? "Submitting..." : "Submit application"}
+                <Button type="submit" disabled={applyLoading} className="gap-2">
+                  {applyLoading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Submitting...
+                    </>
+                  ) : (
+                    "Submit"
+                  )}
                 </Button>
               </div>
             </form>
