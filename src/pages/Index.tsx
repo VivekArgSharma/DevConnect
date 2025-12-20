@@ -4,7 +4,7 @@ import { useRef } from "react";
 import { ProjectCard } from "@/components/ui/project-card";
 import { AuroraBackground } from "@/components/ui/aurora-background";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Sparkles, ArrowDown } from "lucide-react";
+import { ArrowRight, Sparkles, ArrowDown, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
@@ -19,9 +19,6 @@ const Index = () => {
   const navigate = useNavigate();
   const { accessToken } = useAuth();
 
-  /* ------------------------------------------------------
-     FETCH TOP PROJECTS (BACKEND SORTED)
-  ------------------------------------------------------ */
   const {
     data: topProjects = [],
     refetch: refetchProjects,
@@ -29,17 +26,12 @@ const Index = () => {
   } = useQuery({
     queryKey: ["top-projects"],
     queryFn: async () => {
-      const res = await fetch(
-        `${API_URL}/posts/top/projects?limit=${LIMIT}`
-      );
+      const res = await fetch(`${API_URL}/posts/top/projects?limit=${LIMIT}`);
       return res.json();
     },
     staleTime: 120_000,
   });
 
-  /* ------------------------------------------------------
-     FETCH TOP BLOGS (BACKEND SORTED)
-  ------------------------------------------------------ */
   const {
     data: topBlogs = [],
     refetch: refetchBlogs,
@@ -47,34 +39,32 @@ const Index = () => {
   } = useQuery({
     queryKey: ["top-blogs"],
     queryFn: async () => {
-      const res = await fetch(
-        `${API_URL}/posts/top/blogs?limit=${LIMIT}`
-      );
+      const res = await fetch(`${API_URL}/posts/top/blogs?limit=${LIMIT}`);
       return res.json();
     },
     staleTime: 120_000,
   });
 
   return (
-    <div className="min-h-screen bg-transparent">
-      {/* ====================== HERO ====================== */}
+    <div className="min-h-screen bg-background">
+      {/* HERO */}
       <AuroraBackground>
         <motion.div
           initial={{ opacity: 0, y: 40 }}
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2, duration: 0.7 }}
-          className="relative flex flex-col gap-4 items-center justify-center px-4 pt-32 pb-24"
+          className="relative flex flex-col gap-6 items-center justify-center px-4 pt-32 pb-28"
         >
-          <div className="text-3xl md:text-7xl font-bold text-white text-center">
+          <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold text-foreground text-center tracking-tight">
             Showcase Your <span className="text-primary">Work</span>
-          </div>
+          </h1>
 
-          <div className="text-white/70 max-w-2xl text-center text-lg md:text-xl">
-            Discover developer projects and blogs.
-          </div>
+          <p className="text-muted-foreground max-w-2xl text-center text-lg md:text-xl">
+            Discover developer projects and blogs from the community.
+          </p>
 
-          <div className="flex gap-4 mt-6">
-            <Button size="lg" onClick={() => navigate("/post")}>
+          <div className="flex gap-4 mt-4">
+            <Button size="lg" onClick={() => navigate("/post")} className="gap-2">
               <Sparkles className="w-4 h-4" />
               Post something
               <ArrowRight className="w-4 h-4" />
@@ -83,109 +73,101 @@ const Index = () => {
             <Button
               variant="outline"
               size="lg"
-              className="bg-white/10 text-white border-white/20"
-              onClick={() =>
-                projectsRef.current?.scrollIntoView({ behavior: "smooth" })
-              }
+              onClick={() => projectsRef.current?.scrollIntoView({ behavior: "smooth" })}
+              className="gap-2"
             >
-              Explore projects
+              Explore
               <ArrowDown className="w-4 h-4" />
             </Button>
           </div>
         </motion.div>
       </AuroraBackground>
 
-      {/* ====================== PROJECTS ====================== */}
-      <section
-        ref={projectsRef}
-        className="min-h-screen px-4 py-20 flex justify-center"
-      >
-        <div className="max-w-7xl w-full">
-          <h2 className="text-5xl font-bold mb-12 text-center">
-            Top Projects
-          </h2>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-            {loadingProjects && <p>Loading projects…</p>}
-
-            {!loadingProjects && topProjects.length === 0 && (
-              <p className="text-center w-full text-gray-500">
-                No projects posted yet.
-              </p>
-            )}
-
-            {topProjects.map((p: any) => (
-              <ProjectCard
-                key={p.id}
-                image={p.cover_image_url}
-                title={p.title}
-                author={p.profiles?.full_name || "Unknown"}
-                techStack={p.tags?.join(", ") || "Project"}
-                description={p.short_description}
-                likes_count={p.likes_count}
-                onClick={() => navigate(`/projects/${p.id}`)}
-                onUpvote={async () => {
-                  await upvotePost(p.id, accessToken, API_URL);
-                  refetchProjects();
-                }}
-              />
-            ))}
+      {/* PROJECTS */}
+      <section ref={projectsRef} className="px-4 py-20 md:py-28">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-bold text-foreground">Top Projects</h2>
+            <p className="text-muted-foreground mt-2">Featured work from the community</p>
           </div>
 
-          <div className="flex justify-center mt-10">
-            <Button
-              onClick={() => navigate("/projects")}
-              className="px-8 py-6 text-lg"
-            >
-              See more projects
+          {loadingProjects ? (
+            <div className="flex justify-center py-12">
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            </div>
+          ) : topProjects.length === 0 ? (
+            <div className="text-center py-12 bg-card border border-border rounded-xl">
+              <p className="text-muted-foreground">No projects posted yet.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+              {topProjects.map((p: any) => (
+                <ProjectCard
+                  key={p.id}
+                  image={p.cover_image_url}
+                  title={p.title}
+                  author={p.profiles?.full_name || "Unknown"}
+                  techStack={p.tags?.join(", ") || "Project"}
+                  description={p.short_description}
+                  likes_count={p.likes_count}
+                  onClick={() => navigate(`/projects/${p.id}`)}
+                  onUpvote={async () => {
+                    await upvotePost(p.id, accessToken, API_URL);
+                    refetchProjects();
+                  }}
+                />
+              ))}
+            </div>
+          )}
+
+          <div className="flex justify-center mt-12">
+            <Button onClick={() => navigate("/projects")} size="lg" variant="secondary">
+              See all projects
             </Button>
           </div>
         </div>
       </section>
 
-      {/* ====================== BLOGS ====================== */}
-      <section
-        ref={blogsRef}
-        className="min-h-screen px-4 py-20 flex justify-center"
-      >
-        <div className="max-w-7xl w-full">
-          <h2 className="text-5xl font-bold mb-12 text-center">
-            Developer Blogs
-          </h2>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-            {loadingBlogs && <p>Loading blogs…</p>}
-
-            {!loadingBlogs && topBlogs.length === 0 && (
-              <p className="text-center w-full text-gray-500">
-                No blogs posted yet.
-              </p>
-            )}
-
-            {topBlogs.map((b: any) => (
-              <ProjectCard
-                key={b.id}
-                image={b.cover_image_url}
-                title={b.title}
-                author={b.profiles?.full_name || "Unknown"}
-                techStack={b.tags?.join(", ") || "Blog"}
-                description={b.short_description}
-                likes_count={b.likes_count}
-                onClick={() => navigate(`/blogs/${b.id}`)}
-                onUpvote={async () => {
-                  await upvotePost(b.id, accessToken, API_URL);
-                  refetchBlogs();
-                }}
-              />
-            ))}
+      {/* BLOGS */}
+      <section ref={blogsRef} className="px-4 py-20 md:py-28 bg-secondary/30">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-bold text-foreground">Developer Blogs</h2>
+            <p className="text-muted-foreground mt-2">Insights and tutorials from developers</p>
           </div>
 
-          <div className="flex justify-center mt-10">
-            <Button
-              onClick={() => navigate("/blogs")}
-              className="px-8 py-6 text-lg"
-            >
-              See more blogs
+          {loadingBlogs ? (
+            <div className="flex justify-center py-12">
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            </div>
+          ) : topBlogs.length === 0 ? (
+            <div className="text-center py-12 bg-card border border-border rounded-xl">
+              <p className="text-muted-foreground">No blogs posted yet.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+              {topBlogs.map((b: any) => (
+                <ProjectCard
+                  key={b.id}
+                  image={b.cover_image_url}
+                  title={b.title}
+                  author={b.profiles?.full_name || "Unknown"}
+                  techStack={b.tags?.join(", ") || "Blog"}
+                  description={b.short_description}
+                  likes_count={b.likes_count}
+                  onClick={() => navigate(`/blogs/${b.id}`)}
+                  onUpvote={async () => {
+                    await upvotePost(b.id, accessToken, API_URL);
+                    refetchBlogs();
+                  }}
+                />
+              ))}
+            </div>
+          )}
+
+          <div className="flex justify-center mt-12">
+            <Button onClick={() => navigate("/blogs")} size="lg" variant="secondary">
+              See all blogs
             </Button>
           </div>
         </div>
