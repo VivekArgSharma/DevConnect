@@ -9,6 +9,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { ProjectCard } from "@/components/ui/project-card";
 import { fetchStarredPosts, toggleStar } from "@/lib/stars";
 import { upvotePost } from "@/lib/upvote";
+import Squares from "@/components/ui/Squares";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -51,25 +52,35 @@ export default function StarredPosts() {
   };
 
   return (
-    <div className="p-6 space-y-8">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Your Starred Posts</h1>
-        <button
-          onClick={() => navigate("/profile")}
-          className="text-sm text-blue-600 underline"
-        >
-          ← Back to Profile
-        </button>
+    <>
+      <div className="fixed inset-0 -z-10">
+        <Squares
+          direction="diagonal"
+          speed={0.3}
+          borderColor="hsl(var(--border) / 0.3)"
+          squareSize={50}
+          hoverFillColor="hsl(var(--primary) / 0.1)"
+        />
       </div>
+      <div className="p-6 space-y-8 relative">
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold text-foreground">Your Starred Posts</h1>
+          <button
+            onClick={() => navigate("/profile")}
+            className="text-sm text-primary underline"
+          >
+            ← Back to Profile
+          </button>
+        </div>
 
-      {isLoading && <p>Loading starred posts…</p>}
-      {!isLoading && posts.length === 0 && (
-        <p>You haven&apos;t starred any projects or blogs yet.</p>
-      )}
+        {isLoading && <p className="text-muted-foreground">Loading starred posts…</p>}
+        {!isLoading && posts.length === 0 && (
+          <p className="text-muted-foreground">You haven&apos;t starred any projects or blogs yet.</p>
+        )}
 
-      {projects.length > 0 && (
-        <section className="space-y-4">
-          <h2 className="text-xl font-semibold">Starred Projects</h2>
+        {projects.length > 0 && (
+          <section className="space-y-4">
+            <h2 className="text-xl font-semibold text-foreground">Starred Projects</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {projects.map((post: any) => (
               <ProjectCard
@@ -86,13 +97,13 @@ export default function StarredPosts() {
                 onToggleStar={() => handleToggleStar(post.id)}
               />
             ))}
-          </div>
-        </section>
-      )}
+            </div>
+          </section>
+        )}
 
-      {blogs.length > 0 && (
-        <section className="space-y-4">
-          <h2 className="text-xl font-semibold">Starred Blogs</h2>
+        {blogs.length > 0 && (
+          <section className="space-y-4">
+            <h2 className="text-xl font-semibold text-foreground">Starred Blogs</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {blogs.map((post: any) => (
               <ProjectCard
@@ -109,9 +120,10 @@ export default function StarredPosts() {
                 onToggleStar={() => handleToggleStar(post.id)}
               />
             ))}
-          </div>
-        </section>
-      )}
-    </div>
+            </div>
+          </section>
+        )}
+      </div>
+    </>
   );
 }

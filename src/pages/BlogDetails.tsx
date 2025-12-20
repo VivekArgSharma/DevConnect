@@ -11,6 +11,7 @@ import { fetchComments, createComment, deleteComment } from "@/lib/comments";
 import { useMemo, useState } from "react";
 import DeletePostButton from "@/components/DeletePostButton";
 import AIPostChatbot from "@/components/AIPostChatbot";
+import Squares from "@/components/ui/Squares";
 
 const API_URL = import.meta.env.VITE_API_URL as string;
 
@@ -94,7 +95,17 @@ export default function BlogDetails() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
+    <>
+      <div className="fixed inset-0 -z-10">
+        <Squares
+          direction="diagonal"
+          speed={0.3}
+          borderColor="hsl(var(--border) / 0.3)"
+          squareSize={50}
+          hoverFillColor="hsl(var(--primary) / 0.1)"
+        />
+      </div>
+      <div className="max-w-4xl mx-auto p-6 relative">
       <h1 className="text-3xl font-bold text-foreground">{post.title}</h1>
 
       {/* Tags */}
@@ -198,9 +209,9 @@ export default function BlogDetails() {
         </div>
       </div>
 
-      {/* 🤖 AI CHATBOT */}
-      <AIPostChatbot
-        context={`
+        {/* 🤖 AI CHATBOT */}
+        <AIPostChatbot
+          context={`
 BLOG POST
 
 Title: ${post.title}
@@ -212,8 +223,9 @@ Tags: ${(post.tags || []).join(", ")}
 Content:
 ${post.content}
 `}
-      />
-    </div>
+        />
+      </div>
+    </>
   );
 }
 

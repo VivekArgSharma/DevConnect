@@ -5,6 +5,7 @@ import { Button } from "../components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { ProjectCard } from "../components/ui/project-card";
 import { LogOut, Edit, Star, Globe, Loader2 } from "lucide-react";
+import Squares from "@/components/ui/Squares";
 
 export default function Profile() {
   const { user, signInWithGoogle, signOut } = useAuth();
@@ -80,7 +81,17 @@ export default function Profile() {
 
   // SIGNED IN VIEW
   return (
-    <div className="max-w-4xl mx-auto px-4 pb-20">
+    <>
+      <div className="fixed inset-0 -z-10">
+        <Squares
+          direction="diagonal"
+          speed={0.3}
+          borderColor="hsl(var(--border) / 0.3)"
+          squareSize={50}
+          hoverFillColor="hsl(var(--primary) / 0.1)"
+        />
+      </div>
+      <div className="max-w-4xl mx-auto px-4 pb-20 relative">
       {/* Profile Header */}
       <div className="bg-card border border-border rounded-2xl p-6 md:p-8">
         <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
@@ -223,6 +234,7 @@ export default function Profile() {
           </div>
         )}
       </section>
-    </div>
+      </div>
+    </>
   );
 }

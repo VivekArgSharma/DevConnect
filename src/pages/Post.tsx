@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/AuthContext";
 import TagInput from "@/components/TagInput";
+import Squares from "@/components/ui/Squares";
 
 type PostType = "project" | "blog" | null;
 type FormState = "idle" | "loading" | "success" | "error";
@@ -177,7 +178,17 @@ const Post = () => {
 
   // UI
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center px-4 py-20">
+    <>
+      <div className="fixed inset-0 -z-10">
+        <Squares
+          direction="diagonal"
+          speed={0.3}
+          borderColor="hsl(var(--border) / 0.3)"
+          squareSize={50}
+          hoverFillColor="hsl(var(--primary) / 0.1)"
+        />
+      </div>
+      <div className="min-h-screen flex items-center justify-center px-4 py-20 relative">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -370,7 +381,7 @@ const Post = () => {
             onSubmit={handleBlogSubmit}
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="space-y-4 bg-card p-6 rounded-xl border border-border"
+            className="space-y-4 bg-card/80 backdrop-blur-sm p-6 rounded-xl border border-border"
           >
             <div className="space-y-2">
               <Label htmlFor="blog-title">Blog Title</Label>
@@ -420,7 +431,8 @@ const Post = () => {
           </motion.form>
         )}
       </motion.div>
-    </div>
+      </div>
+    </>
   );
 };
 

@@ -3,6 +3,7 @@ import { supabase } from "@/lib/supabaseClient";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { MessageCircle, Loader2 } from "lucide-react";
+import Squares from "@/components/ui/Squares";
 
 interface ChatItem {
   chat_id: string;
@@ -73,7 +74,17 @@ export default function Chats() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-4 pb-20">
+    <>
+      <div className="fixed inset-0 -z-10">
+        <Squares
+          direction="diagonal"
+          speed={0.3}
+          borderColor="hsl(var(--border) / 0.3)"
+          squareSize={50}
+          hoverFillColor="hsl(var(--primary) / 0.1)"
+        />
+      </div>
+      <div className="max-w-2xl mx-auto px-4 pb-20 relative">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-foreground">Messages</h1>
         <p className="text-muted-foreground mt-1">{chats.length} conversation{chats.length !== 1 ? 's' : ''}</p>
@@ -118,6 +129,7 @@ export default function Chats() {
           </div>
         ))}
       </div>
-    </div>
+      </div>
+    </>
   );
 }

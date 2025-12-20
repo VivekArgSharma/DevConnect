@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import TagInput from "@/components/TagInput";
 import DMButton from "@/components/DMButton";
 import { Users, Plus, Send, Inbox, ExternalLink, Github, X, Loader2 } from "lucide-react";
+import Squares from "@/components/ui/Squares";
 
 const API_URL =
   import.meta.env.VITE_API_URL?.endsWith("/api")
@@ -1020,7 +1021,17 @@ export default function TeamFinder() {
   /* ------------------- MAIN RENDER ------------------- */
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8">
+    <>
+      <div className="fixed inset-0 -z-10">
+        <Squares
+          direction="diagonal"
+          speed={0.3}
+          borderColor="hsl(var(--border) / 0.3)"
+          squareSize={50}
+          hoverFillColor="hsl(var(--primary) / 0.1)"
+        />
+      </div>
+      <div className="max-w-6xl mx-auto px-4 py-8 relative">
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-2">
@@ -1158,5 +1169,6 @@ export default function TeamFinder() {
         </div>
       )}
     </div>
+    </>
   );
 }

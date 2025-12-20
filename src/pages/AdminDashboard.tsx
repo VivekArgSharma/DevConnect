@@ -3,6 +3,7 @@ import axios from "axios";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
+import Squares from "@/components/ui/Squares";
 
 const API_URL = import.meta.env.VITE_API_URL as string;
 
@@ -103,52 +104,63 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto p-6">
-      <h1 className="text-3xl font-bold mb-6">Admin Dashboard</h1>
+    <>
+      <div className="fixed inset-0 -z-10">
+        <Squares
+          direction="diagonal"
+          speed={0.3}
+          borderColor="hsl(var(--border) / 0.3)"
+          squareSize={50}
+          hoverFillColor="hsl(var(--primary) / 0.1)"
+        />
+      </div>
+      <div className="max-w-5xl mx-auto p-6 relative">
+        <h1 className="text-3xl font-bold mb-6 text-foreground">Admin Dashboard</h1>
 
-      {posts.length === 0 ? (
-        <p className="text-gray-500">No pending posts 🎉</p>
-      ) : (
-        <div className="space-y-4">
-          {posts.map((post) => (
-            <div
-              key={post.id}
-              className="border rounded-lg p-4 flex justify-between items-center"
-            >
-              <div>
-                <h2 className="text-lg font-semibold">{post.title}</h2>
-                <p className="text-sm text-gray-500">
-                  {post.type.toUpperCase()} • by{" "}
-                  {post.profiles?.full_name ?? "Unknown"}
-                </p>
+        {posts.length === 0 ? (
+          <p className="text-muted-foreground">No pending posts 🎉</p>
+        ) : (
+          <div className="space-y-4">
+            {posts.map((post) => (
+              <div
+                key={post.id}
+                className="border border-border bg-card/80 backdrop-blur-sm rounded-lg p-4 flex justify-between items-center"
+              >
+                <div>
+                  <h2 className="text-lg font-semibold text-foreground">{post.title}</h2>
+                  <p className="text-sm text-muted-foreground">
+                    {post.type.toUpperCase()} • by{" "}
+                    {post.profiles?.full_name ?? "Unknown"}
+                  </p>
+                </div>
+
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => navigate(`/admin/posts/${post.id}`)}
+                  >
+                    View
+                  </Button>
+
+                  <Button
+                    className="bg-green-600 hover:bg-green-700"
+                    onClick={() => updateStatus(post.id, "approved")}
+                  >
+                    Accept
+                  </Button>
+
+                  <Button
+                    variant="destructive"
+                    onClick={() => updateStatus(post.id, "rejected")}
+                  >
+                    Reject
+                  </Button>
+                </div>
               </div>
-
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  onClick={() => navigate(`/admin/posts/${post.id}`)}
-                >
-                  View
-                </Button>
-
-                <Button
-                  className="bg-green-600 hover:bg-green-700"
-                  onClick={() => updateStatus(post.id, "approved")}
-                >
-                  Accept
-                </Button>
-
-                <Button
-                  variant="destructive"
-                  onClick={() => updateStatus(post.id, "rejected")}
-                >
-                  Reject
-                </Button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </>
   );
 }
