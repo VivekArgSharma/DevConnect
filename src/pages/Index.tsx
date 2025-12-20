@@ -10,6 +10,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { upvotePost } from "@/lib/upvote";
 import Squares from "@/components/ui/Squares";
+import FeatureCarousel from "@/components/ui/feature-carousel";
 
 const API_URL = import.meta.env.VITE_API_URL;
 const LIMIT = 8;
@@ -96,6 +97,20 @@ const Index = () => {
             hoverFillColor="hsl(var(--primary) / 0.1)"
           />
         </div>
+
+        {/* FEATURE CAROUSEL */}
+        <section className="px-4 py-16 md:py-20 relative">
+          <div className="flex justify-center">
+            <FeatureCarousel
+              baseWidth={340}
+              autoplay={true}
+              autoplayDelay={3500}
+              pauseOnHover={true}
+              loop={true}
+              round={false}
+            />
+          </div>
+        </section>
 
         {/* PROJECTS */}
         <section ref={projectsRef} className="px-4 py-20 md:py-28 relative">
