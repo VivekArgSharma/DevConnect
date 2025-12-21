@@ -72,6 +72,8 @@ const Squares: React.FC<SquaresProps> = ({
         }
       }
 
+      // Create a radial gradient for edge fade effect
+      // Using transparent colors since Canvas API can't parse CSS variables
       const gradient = ctx.createRadialGradient(
         canvas.width / 2,
         canvas.height / 2,
@@ -81,7 +83,7 @@ const Squares: React.FC<SquaresProps> = ({
         Math.sqrt(canvas.width ** 2 + canvas.height ** 2) / 2
       );
       gradient.addColorStop(0, 'rgba(0, 0, 0, 0)');
-      gradient.addColorStop(1, 'hsl(var(--background))');
+      gradient.addColorStop(1, 'rgba(0, 0, 0, 0.8)');
 
       ctx.fillStyle = gradient;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
