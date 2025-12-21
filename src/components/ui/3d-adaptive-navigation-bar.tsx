@@ -66,7 +66,21 @@ export const PillBase: React.FC<PillBaseProps> = ({ onExpandedChange }) => {
       : []),
   ];
 
-  const pillWidth = useSpring(56, { stiffness: 220, damping: 25 });
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 640);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  const collapsedSize = isMobile ? 48 : 56;
+  const itemWidth = isMobile ? 44 : 72;
+  const padding = isMobile ? 16 : 48;
+
+  const pillWidth = useSpring(collapsedSize, { stiffness: 220, damping: 25 });
+  const pillHeight = useSpring(isMobile ? 48 : 56, { stiffness: 220, damping: 25 });
 
   useEffect(() => {
     const match = navItems.find((n) => n.path === location.pathname);
@@ -76,15 +90,15 @@ export const PillBase: React.FC<PillBaseProps> = ({ onExpandedChange }) => {
   useEffect(() => {
     if (hovering) {
       setExpanded(true);
-      pillWidth.set(navItems.length * 72 + 48);
+      pillWidth.set(navItems.length * itemWidth + padding);
       if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
     } else {
       hoverTimeoutRef.current = setTimeout(() => {
         setExpanded(false);
-        pillWidth.set(56);
+        pillWidth.set(collapsedSize);
       }, 400);
     }
-  }, [hovering, navItems.length]);
+  }, [hovering, navItems.length, itemWidth, padding, collapsedSize]);
 
   // Notify parent when expanded state changes
   useEffect(() => {
@@ -148,7 +162,7 @@ export const PillBase: React.FC<PillBaseProps> = ({ onExpandedChange }) => {
       className="relative rounded-full backdrop-blur-xl"
       style={{
         width: pillWidth,
-        height: "56px",
+        height: pillHeight,
         background: "hsl(var(--card))",
         border: "1px solid hsl(var(--border))",
         boxShadow: expanded
@@ -169,7 +183,7 @@ export const PillBase: React.FC<PillBaseProps> = ({ onExpandedChange }) => {
               transition={{ duration: 0.2 }}
               className="relative"
             >
-              <ActiveIcon className="w-5 h-5 text-foreground" />
+              <ActiveIcon className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'} text-foreground`} />
               {activeItem.id === "chats" && unreadTotal > 0 && (
                 <span className="absolute -top-1.5 -right-1.5 bg-primary text-primary-foreground text-[10px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1">
                   {unreadTotal}
@@ -182,7 +196,7 @@ export const PillBase: React.FC<PillBaseProps> = ({ onExpandedChange }) => {
 
       {/* Expanded State */}
       {expanded && (
-        <div className="flex items-center justify-evenly w-full h-full px-4">
+        <div className={`flex items-center justify-evenly w-full h-full ${isMobile ? 'px-1' : 'px-4'}`}>
           {navItems.map((item, index) => {
             const isActive = item.id === activeSection;
             const Icon = item.icon;
@@ -194,14 +208,14 @@ export const PillBase: React.FC<PillBaseProps> = ({ onExpandedChange }) => {
                 initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.03 }}
-                className={`relative flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-lg transition-all duration-200 ${
+                className={`relative flex flex-col items-center gap-0.5 ${isMobile ? 'px-1 py-1' : 'px-2 py-1.5'} rounded-lg transition-all duration-200 ${
                   isActive 
                     ? "text-primary" 
                     : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
                 }`}
               >
-                <Icon className="w-4 h-4" />
-                <span className="text-[10px] font-medium">{item.label}</span>
+                <Icon className={isMobile ? "w-3.5 h-3.5" : "w-4 h-4"} />
+                <span className={`${isMobile ? 'text-[8px]' : 'text-[10px]'} font-medium`}>{item.label}</span>
 
                 {item.id === "chats" && unreadTotal > 0 && (
                   <span className="absolute -top-0.5 -right-0.5 bg-primary text-primary-foreground text-[9px] font-bold rounded-full min-w-[14px] h-3.5 flex items-center justify-center px-1">
