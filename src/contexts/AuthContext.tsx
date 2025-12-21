@@ -1,36 +1,42 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 
-const AuthContext = createContext(null);
+const AuthContext = createContext<any>(null);
 
-export const AuthProvider = ({ children }) => {
-  const [session, setSession] = useState(null);
-  const [accessToken, setAccessToken] = useState(null);
-  const [user, setUser] = useState(null);
+export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
+  const [session, setSession] = useState<any>(null);
+  const [accessToken, setAccessToken] = useState<string | null>(null);
+  const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
-    const currentSession = supabase.auth.getSession().then(({ data }) => {
+    // Load existing session
+    supabase.auth.getSession().then(({ data }) => {
       setSession(data.session);
-      setUser(data.session?.user || null);
-      setAccessToken(data.session?.access_token || null);
+      setUser(data.session?.user ?? null);
+      setAccessToken(data.session?.access_token ?? null);
     });
 
-    const { data: listener } = supabase.auth.onAuthStateChange(
-      (_event, newSession) => {
-        setSession(newSession);
-        setUser(newSession?.user || null);
-        setAccessToken(newSession?.access_token || null);
-      }
-    );
+    // Listen to auth changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      setSession(newSession);
+      setUser(newSession?.user ?? null);
+      setAccessToken(newSession?.access_token ?? null);
+    });
 
     return () => {
-      listener.subscription.unsubscribe();
+      subscription.unsubscribe();
     };
   }, []);
 
+  // ✅ FIXED GOOGLE SIGN IN
   const signInWithGoogle = async () => {
     await supabase.auth.signInWithOAuth({
       provider: "google",
+      options: {
+        redirectTo: window.location.origin, // ✅ IMPORTANT FIX
+      },
     });
   };
 
