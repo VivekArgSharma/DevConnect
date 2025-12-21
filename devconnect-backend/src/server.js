@@ -1,5 +1,4 @@
 // src/server.js
-
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
@@ -20,31 +19,49 @@ dotenv.config();
 const app = express();
 const server = http.createServer(app);
 
-/* -------------------- CORS (NO WILDCARDS) -------------------- */
+/* -----------------------------------------------------
+   ✅ CORS — CORRECT + NODE 22 SAFE
+----------------------------------------------------- */
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://localhost:3000",
+  "http://localhost:8080",
+  "https://devconnect.lovable.app",
+  "https://dev-connect-pi-opal.vercel.app", // ✅ Vercel frontend
+];
+
 app.use(
   cors({
-    origin: [
-      "http://localhost:5173",
-      "http://localhost:3000",
-      "http://localhost:8080",
-      "https://devconnect-pi-opal.vercel.app", // 🔁 replace with your actual Vercel domain
-    ],
+    origin: (origin, callback) => {
+      // allow server-to-server or curl requests (no origin)
+      if (!origin) return callback(null, true);
+
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      return callback(new Error("Not allowed by CORS"));
+    },
     credentials: true,
-    methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
 
-/* ❗ DO NOT ADD app.options('*') — breaks Node 22 */
+/* ❗ DO NOT ADD app.options() — cors() handles it */
 
 app.use(express.json());
 
-/* -------------------- HEALTH -------------------- */
+/* -----------------------------------------------------
+   HEALTH
+----------------------------------------------------- */
 app.get("/", (req, res) => {
   res.json({ message: "DevConnect backend running" });
 });
 
-/* -------------------- API ROUTES -------------------- */
+/* -----------------------------------------------------
+   ROUTES
+----------------------------------------------------- */
 app.use("/api", userRoutes);
 app.use("/api/posts", postRoutes);
 app.use("/api/comments", commentRoutes);
@@ -52,23 +69,24 @@ app.use("/api/teams", teamRoutes);
 app.use("/api/ai", aiRoutes);
 app.use("/api/admin", adminRoutes);
 
-/* -------------------- CHAT REST -------------------- */
+// chat REST routes
 app.use(chatRoutes);
 
-/* -------------------- SOCKET.IO -------------------- */
+/* -----------------------------------------------------
+   SOCKET.IO
+----------------------------------------------------- */
 const io = new Server(server, {
   cors: {
-    origin: [
-      "http://localhost:5173",
-      "https://devconnect-pi-opal.vercel.app",
-    ],
+    origin: allowedOrigins,
     methods: ["GET", "POST"],
   },
 });
 
 registerChatSockets(io);
 
-/* -------------------- START -------------------- */
+/* -----------------------------------------------------
+   START
+----------------------------------------------------- */
 const PORT = process.env.PORT || 4000;
 server.listen(PORT, () => {
   console.log(`🚀 DevConnect backend running on port ${PORT}`);
