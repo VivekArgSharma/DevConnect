@@ -220,8 +220,7 @@ const Post = () => {
 
         {formState === "success" && (
           <div className="mb-4 p-3 rounded-md bg-green-100 text-green-700 text-sm text-center">
-            Your {postType === "project" ? "project" : "blog"} has been
-            published!
+            Your {postType === "project" ? "project" : "blog"} will be published soon! Please Wait for Approval from the Admin!
           </div>
         )}
 
