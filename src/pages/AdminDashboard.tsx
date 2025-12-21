@@ -137,7 +137,11 @@ export default function AdminDashboard() {
                 <div className="flex gap-2">
                   <Button
                     variant="outline"
-                    onClick={() => navigate(`/admin/posts/${post.id}`)}
+                    onClick={() => navigate(
+  post.type === "blog"
+    ? `/admin/blogs/${post.id}`
+    : `/admin/projects/${post.id}`
+)}
                   >
                     View
                   </Button>

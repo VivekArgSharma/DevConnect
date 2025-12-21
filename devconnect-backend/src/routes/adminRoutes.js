@@ -32,6 +32,31 @@ router.get("/posts", requireAuth, requireAdmin, async (req, res) => {
 });
 
 /* -----------------------------------------------------
+   GET SINGLE POST (ADMIN VIEW — ANY STATUS)
+   GET /api/admin/posts/:id
+----------------------------------------------------- */
+router.get("/posts/:id", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const postId = req.params.id;
+
+    const { data, error } = await supabaseAdmin
+      .from("posts")
+      .select("*, profiles(full_name, avatar_url)")
+      .eq("id", postId)
+      .single();
+
+    if (error || !data) {
+      return res.status(404).json({ error: "Post not found" });
+    }
+
+    res.json(data);
+  } catch (err) {
+    console.error("Admin fetch single post error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+/* -----------------------------------------------------
    UPDATE POST STATUS
    PATCH /api/admin/posts/:id/status
 ----------------------------------------------------- */

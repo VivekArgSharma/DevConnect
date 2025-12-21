@@ -1,5 +1,4 @@
-
-export const requireAdmin = (req, res, next) => {
+export function requireAdmin(req, res, next) {
   const adminEmail = process.env.ADMIN_EMAIL;
 
   if (!req.user || req.user.email !== adminEmail) {
@@ -7,4 +6,4 @@ export const requireAdmin = (req, res, next) => {
   }
 
   next();
-};
+}

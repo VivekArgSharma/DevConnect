@@ -25,7 +25,19 @@ export default function ProjectDetails() {
   const { data: post } = useQuery({
     queryKey: ["project", id],
     queryFn: async () => {
-      const res = await fetch(`${API_URL}/posts/${id}`);
+      const isAdminView = location.pathname.startsWith("/admin");
+
+const res = await fetch(
+  isAdminView
+    ? `${API_URL}/admin/posts/${id}`
+    : `${API_URL}/posts/${id}`,
+  {
+    headers: accessToken
+      ? { Authorization: `Bearer ${accessToken}` }
+      : {},
+  }
+);
+
       if (!res.ok) throw new Error("Failed to fetch project");
       return res.json();
     },

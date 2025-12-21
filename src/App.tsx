@@ -47,6 +47,11 @@ export default function App() {
                 <Route path="/blogs" element={<Blogs />} />
                 <Route path="/blogs/:id" element={<BlogDetails />} />
 
+                {/* 🔒 ADMIN VIEW (PENDING POSTS) */}
+                <Route path="/admin/blogs/:id" element={<BlogDetails />} />
+                <Route path="/admin/projects/:id" element={<ProjectDetails />} />
+
+
                 {/* CREATE POST */}
                 <Route path="/post/:id" element={<Post />} />
                 <Route path="/post" element={<Post />} />
