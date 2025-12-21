@@ -21,7 +21,11 @@ interface NavItem {
   icon: React.ElementType;
 }
 
-export const PillBase: React.FC = () => {
+interface PillBaseProps {
+  onExpandedChange?: (expanded: boolean) => void;
+}
+
+export const PillBase: React.FC<PillBaseProps> = ({ onExpandedChange }) => {
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -82,6 +86,11 @@ export const PillBase: React.FC = () => {
     }
   }, [hovering, navItems.length]);
 
+  // Notify parent when expanded state changes
+  useEffect(() => {
+    onExpandedChange?.(expanded);
+  }, [expanded, onExpandedChange]);
+
   useEffect(() => {
     async function loadUnread() {
       const { data } = await supabase.auth.getSession();
@@ -123,10 +132,18 @@ export const PillBase: React.FC = () => {
   const activeItem = navItems.find((n) => n.id === activeSection);
   const ActiveIcon = activeItem?.icon;
 
+  // Handle click for mobile touch support
+  const handleNavClick = () => {
+    if (!expanded) {
+      setHovering(true);
+    }
+  };
+
   return (
     <motion.nav
       onMouseEnter={() => setHovering(true)}
       onMouseLeave={() => setHovering(false)}
+      onClick={handleNavClick}
       ref={containerRef}
       className="relative rounded-full backdrop-blur-xl"
       style={{
