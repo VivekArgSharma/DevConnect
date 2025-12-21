@@ -1,5 +1,3 @@
-// devconnect-backend/src/server.js
-
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
@@ -11,7 +9,7 @@ import postRoutes from "./routes/postRoutes.js";
 import commentRoutes from "./routes/commentRoutes.js";
 import teamRoutes from "./routes/teamRoutes.js";
 import aiRoutes from "./routes/aiRoutes.js";
-import adminRoutes from "./routes/adminPostRoutes.js";
+import adminRoutes from "./routes/adminRoutes.js";
 import chatRoutes from "./routes/chatRoutes.js";
 import { registerChatSockets } from "./sockets/chat.socket.js";
 
@@ -20,15 +18,7 @@ dotenv.config();
 const app = express();
 const server = http.createServer(app);
 
-/* -------------------- SOCKET.IO -------------------- */
-const io = new Server(server, {
-  cors: {
-    origin: "*", // OK for dev
-    methods: ["GET", "POST"],
-  },
-});
-
-/* -------------------- EXPRESS CORS -------------------- */
+/* -------------------- CORS -------------------- */
 app.use(
   cors({
     origin: [
@@ -38,13 +28,13 @@ app.use(
       "https://devconnect.lovable.app",
     ],
     credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
 
-// ✅ SAFE PREFLIGHT HANDLER (FIXED)
-app.options(/.*/, cors());
+/* ❌ REMOVE THIS — it crashes Node 22 */
+// app.options(/.*/, cors());
 
 app.use(express.json());
 
@@ -61,14 +51,21 @@ app.use("/api/teams", teamRoutes);
 app.use("/api/ai", aiRoutes);
 app.use("/api/admin", adminRoutes);
 
-// ✅ CHAT REST ROUTES (no /api prefix)
+/* Chat REST routes */
 app.use(chatRoutes);
 
-/* -------------------- SOCKETS -------------------- */
+/* -------------------- SOCKET.IO -------------------- */
+const io = new Server(server, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"],
+  },
+});
+
 registerChatSockets(io);
 
-/* -------------------- START SERVER -------------------- */
+/* -------------------- START -------------------- */
 const PORT = process.env.PORT || 4000;
 server.listen(PORT, () => {
-  console.log(`🚀 DevConnect backend + chat running on port ${PORT}`);
+  console.log(`🚀 DevConnect backend running on port ${PORT}`);
 });
