@@ -22,6 +22,7 @@ export default function ProjectDetails() {
 
   const [newCommentText, setNewCommentText] = useState("");
 
+  /* ---------------- PROJECT ---------------- */
   const { data: post } = useQuery({
     queryKey: ["project", id],
     queryFn: async () => {
@@ -32,6 +33,7 @@ export default function ProjectDetails() {
     enabled: !!id,
   });
 
+  /* ---------------- COMMENTS ---------------- */
   const {
     data: commentsRaw = [],
     refetch: refetchComments,
@@ -76,6 +78,13 @@ export default function ProjectDetails() {
 
   if (!post) return <div className="p-6">Loading...</div>;
 
+  /* ---------------- AUTHOR NAV ---------------- */
+  const goToUser = (uid?: string) => {
+    if (!uid) return;
+    if (uid === user?.id) navigate("/profile");
+    else navigate(`/user/${uid}`);
+  };
+
   return (
     <>
       <div className="fixed inset-0 -z-10">
@@ -83,16 +92,36 @@ export default function ProjectDetails() {
       </div>
 
       <div className="max-w-4xl mx-auto p-6">
+        {/* TITLE */}
         <h1 className="text-3xl font-bold">{post.title}</h1>
 
-        {/* Short Description */}
+        {/* AUTHOR (✅ ADDED — SAME AS BLOG DETAILS) */}
+        <div className="flex items-center gap-3 mt-3">
+          <img
+            src={
+              post.profiles?.avatar_url ||
+              post.avatar_url ||
+              "/default-avatar.png"
+            }
+            className="w-10 h-10 rounded-full cursor-pointer border"
+            onClick={() => goToUser(post.user_id)}
+          />
+          <span
+            className="cursor-pointer text-primary hover:underline"
+            onClick={() => goToUser(post.user_id)}
+          >
+            {post.profiles?.full_name ?? post.full_name ?? "Unknown"}
+          </span>
+        </div>
+
+        {/* SHORT DESCRIPTION */}
         {post.short_description && (
-          <p className="mt-2 text-muted-foreground">
+          <p className="mt-4 text-muted-foreground">
             {post.short_description}
           </p>
         )}
 
-        {/* Links */}
+        {/* LINKS */}
         <div className="flex gap-4 mt-4 flex-wrap">
           {post.project_link && (
             <a href={post.project_link} target="_blank" rel="noreferrer">
@@ -107,7 +136,7 @@ export default function ProjectDetails() {
           )}
         </div>
 
-        {/* Screenshots */}
+        {/* IMAGES */}
         {Array.isArray(post.images) && post.images.length > 0 && (
           <div className="mt-6 grid grid-cols-2 gap-4">
             {post.images.map((img: string, i: number) => (
@@ -121,10 +150,10 @@ export default function ProjectDetails() {
           </div>
         )}
 
-        {/* Content */}
+        {/* CONTENT */}
         <div className="mt-6 whitespace-pre-line">{post.content}</div>
 
-        {/* Comments */}
+        {/* COMMENTS */}
         <hr className="my-6" />
         <h2 className="text-xl font-bold">Comments</h2>
 
@@ -158,6 +187,7 @@ export default function ProjectDetails() {
             node={c}
             depth={0}
             currentUserId={user?.id}
+            goToUser={goToUser}
             onReplySubmit={(pid, text) =>
               createReply.mutate({ post_id: post.id, content: text, parent_id: pid })
             }
@@ -173,7 +203,7 @@ export default function ProjectDetails() {
   );
 }
 
-/* helpers */
+/* ---------------- HELPERS ---------------- */
 function buildCommentTree(flat: any[]) {
   const map = new Map();
   flat.forEach((c: any) => map.set(c.id, { ...c, children: [] }));
@@ -187,10 +217,22 @@ function buildCommentTree(flat: any[]) {
   return roots;
 }
 
-function CommentNode({ node, depth, currentUserId, onReplySubmit, onDelete }: any) {
+function CommentNode({
+  node,
+  depth,
+  currentUserId,
+  goToUser,
+  onReplySubmit,
+  onDelete,
+}: any) {
   return (
     <div style={{ marginLeft: depth * 16 }} className="mt-3">
-      <p className="font-semibold">{node.content}</p>
+      <p
+        className="font-semibold cursor-pointer text-primary hover:underline"
+        onClick={() => goToUser(node.user_id)}
+      >
+        {node.content}
+      </p>
       {currentUserId === node.user_id && (
         <button onClick={() => onDelete(node.id)}>Delete</button>
       )}
@@ -200,6 +242,7 @@ function CommentNode({ node, depth, currentUserId, onReplySubmit, onDelete }: an
           node={c}
           depth={depth + 1}
           currentUserId={currentUserId}
+          goToUser={goToUser}
           onReplySubmit={onReplySubmit}
           onDelete={onDelete}
         />
