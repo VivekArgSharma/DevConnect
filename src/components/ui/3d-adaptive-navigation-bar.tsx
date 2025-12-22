@@ -1,17 +1,16 @@
 import React, { useState, useRef, useEffect } from "react";
 import { motion, useSpring, AnimatePresence } from "framer-motion";
 import { useNavigate, useLocation } from "react-router-dom";
-import axios from "axios";
 import { supabase } from "@/lib/supabaseClient";
-import { 
-  Home, 
-  FolderKanban, 
-  FileText, 
-  PenSquare, 
-  Users, 
-  User, 
+import {
+  Home,
+  FolderKanban,
+  FileText,
+  PenSquare,
+  Users,
+  User,
   MessageCircle,
-  Shield
+  Shield,
 } from "lucide-react";
 
 interface NavItem {
@@ -38,18 +37,17 @@ export const PillBase: React.FC<PillBaseProps> = ({ onExpandedChange }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  /* -------------------- ADMIN CHECK -------------------- */
   useEffect(() => {
     async function checkAdmin() {
       const { data } = await supabase.auth.getUser();
       const user = data.user;
-
       if (!user) return;
 
       if (user.email === import.meta.env.VITE_ADMIN_EMAIL) {
         setIsAdmin(true);
       }
     }
-
     checkAdmin();
   }, []);
 
@@ -66,13 +64,13 @@ export const PillBase: React.FC<PillBaseProps> = ({ onExpandedChange }) => {
       : []),
   ];
 
+  /* -------------------- MOBILE -------------------- */
   const [isMobile, setIsMobile] = useState(false);
-
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 640);
     checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
   const collapsedSize = isMobile ? 48 : 56;
@@ -80,13 +78,18 @@ export const PillBase: React.FC<PillBaseProps> = ({ onExpandedChange }) => {
   const padding = isMobile ? 16 : 48;
 
   const pillWidth = useSpring(collapsedSize, { stiffness: 220, damping: 25 });
-  const pillHeight = useSpring(isMobile ? 48 : 56, { stiffness: 220, damping: 25 });
+  const pillHeight = useSpring(isMobile ? 48 : 56, {
+    stiffness: 220,
+    damping: 25,
+  });
 
+  /* -------------------- ACTIVE ROUTE -------------------- */
   useEffect(() => {
     const match = navItems.find((n) => n.path === location.pathname);
     if (match) setActiveSection(match.id);
   }, [location.pathname, navItems]);
 
+  /* -------------------- HOVER EXPAND -------------------- */
   useEffect(() => {
     if (hovering) {
       setExpanded(true);
@@ -98,46 +101,21 @@ export const PillBase: React.FC<PillBaseProps> = ({ onExpandedChange }) => {
         pillWidth.set(collapsedSize);
       }, 400);
     }
-  }, [hovering, navItems.length, itemWidth, padding, collapsedSize]);
+  }, [hovering, navItems.length, itemWidth, padding, collapsedSize, pillWidth]);
 
-  // Notify parent when expanded state changes
   useEffect(() => {
     onExpandedChange?.(expanded);
   }, [expanded, onExpandedChange]);
 
+  /* ======================================================
+     UNREAD COUNT — BACKEND REMOVED (INTENTIONAL)
+  ====================================================== */
   useEffect(() => {
-    async function loadUnread() {
-      const { data } = await supabase.auth.getSession();
-      const session = data.session;
-      if (!session) return;
+    // Chat backend removed — disable unread count for now
+    setUnreadTotal(0);
+  }, [location.pathname]);
 
-      try {
-        const res = await axios.get(
-          `${import.meta.env.VITE_CHAT_SERVER_URL}/chats`,
-          {
-            headers: { Authorization: `Bearer ${session.access_token}` },
-          }
-        );
-
-        const total = (res.data.chats || []).reduce(
-          (sum: number, c: any) => sum + (c.unread_count || 0),
-          0
-        );
-
-        setUnreadTotal(total);
-      } catch (err) {
-        console.error("Failed to load unread count:", err);
-      }
-    }
-
-    loadUnread();
-    window.addEventListener("chat-read", loadUnread);
-
-    return () => {
-      window.removeEventListener("chat-read", loadUnread);
-    };
-  }, []);
-
+  /* -------------------- NAV HANDLERS -------------------- */
   const handleClick = (item: NavItem) => {
     navigate(item.path);
     setActiveSection(item.id);
@@ -146,13 +124,11 @@ export const PillBase: React.FC<PillBaseProps> = ({ onExpandedChange }) => {
   const activeItem = navItems.find((n) => n.id === activeSection);
   const ActiveIcon = activeItem?.icon;
 
-  // Handle click for mobile touch support
   const handleNavClick = () => {
-    if (!expanded) {
-      setHovering(true);
-    }
+    if (!expanded) setHovering(true);
   };
 
+  /* -------------------- RENDER -------------------- */
   return (
     <motion.nav
       onMouseEnter={() => setHovering(true)}
@@ -171,7 +147,7 @@ export const PillBase: React.FC<PillBaseProps> = ({ onExpandedChange }) => {
         overflow: "hidden",
       }}
     >
-      {/* Collapsed State - Show Icon */}
+      {/* Collapsed */}
       {!expanded && activeItem && ActiveIcon && (
         <div className="absolute inset-0 flex items-center justify-center">
           <AnimatePresence mode="wait">
@@ -183,20 +159,15 @@ export const PillBase: React.FC<PillBaseProps> = ({ onExpandedChange }) => {
               transition={{ duration: 0.2 }}
               className="relative"
             >
-              <ActiveIcon className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'} text-foreground`} />
-              {activeItem.id === "chats" && unreadTotal > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 bg-primary text-primary-foreground text-[10px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1">
-                  {unreadTotal}
-                </span>
-              )}
+              <ActiveIcon className="w-5 h-5 text-foreground" />
             </motion.div>
           </AnimatePresence>
         </div>
       )}
 
-      {/* Expanded State */}
+      {/* Expanded */}
       {expanded && (
-        <div className={`flex items-center justify-evenly w-full h-full ${isMobile ? 'px-1' : 'px-4'}`}>
+        <div className="flex items-center justify-evenly w-full h-full px-4">
           {navItems.map((item, index) => {
             const isActive = item.id === activeSection;
             const Icon = item.icon;
@@ -208,20 +179,14 @@ export const PillBase: React.FC<PillBaseProps> = ({ onExpandedChange }) => {
                 initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.03 }}
-                className={`relative flex flex-col items-center gap-0.5 ${isMobile ? 'px-1 py-1' : 'px-2 py-1.5'} rounded-lg transition-all duration-200 ${
-                  isActive 
-                    ? "text-primary" 
+                className={`relative flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-lg transition-all ${
+                  isActive
+                    ? "text-primary"
                     : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
                 }`}
               >
-                <Icon className={isMobile ? "w-3.5 h-3.5" : "w-4 h-4"} />
-                <span className={`${isMobile ? 'text-[8px]' : 'text-[10px]'} font-medium`}>{item.label}</span>
-
-                {item.id === "chats" && unreadTotal > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 bg-primary text-primary-foreground text-[9px] font-bold rounded-full min-w-[14px] h-3.5 flex items-center justify-center px-1">
-                    {unreadTotal}
-                  </span>
-                )}
+                <Icon className="w-4 h-4" />
+                <span className="text-[10px] font-medium">{item.label}</span>
 
                 {isActive && (
                   <motion.div

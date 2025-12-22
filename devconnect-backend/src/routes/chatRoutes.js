@@ -7,6 +7,10 @@ const router = express.Router();
 /* -------------------- DB -------------------- */
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
+  ssl:
+    process.env.NODE_ENV === "production"
+      ? { rejectUnauthorized: false }
+      : false,
 });
 
 /* -------------------- SUPABASE ADMIN -------------------- */
@@ -28,7 +32,7 @@ async function getUser(req) {
 
   try {
     const { data, error } = await supabaseAdmin.auth.getUser(token);
-    if (error) return null;
+    if (error || !data?.user) return null;
     return data.user;
   } catch {
     return null;
@@ -48,7 +52,6 @@ router.post("/chat/open", async (req, res) => {
   }
 
   try {
-    // Check if DM already exists
     const { rows } = await pool.query(
       `
       SELECT c.id
@@ -68,7 +71,6 @@ router.post("/chat/open", async (req, res) => {
     if (rows.length) {
       chatId = rows[0].id;
 
-      // Restore chat if user had deleted it
       await pool.query(
         `
         UPDATE chat_participants
@@ -78,7 +80,6 @@ router.post("/chat/open", async (req, res) => {
         [chatId, user.id]
       );
     } else {
-      // Create new DM
       const created = await pool.query(
         `INSERT INTO chats (is_group) VALUES (false) RETURNING id`
       );
@@ -130,11 +131,12 @@ router.get("/chat/:chatId/messages", async (req, res) => {
       [chatId]
     );
 
-    // Mark as read for this user
     await pool.query(
       `
       UPDATE chat_participants
-      SET last_read_at = now(), is_deleted = false
+      SET
+        last_read_at = NOW(),
+        is_deleted = false
       WHERE chat_id = $1 AND user_id = $2
       `,
       [chatId, user.id]
@@ -169,7 +171,8 @@ router.get("/chats", async (req, res) => {
           FROM messages msg
           WHERE msg.chat_id = c.id
             AND msg.sender_id <> $1
-            AND msg.created_at > cp1.last_read_at
+            AND msg.created_at >
+                COALESCE(cp1.last_read_at, '1970-01-01')
         ) AS unread_count
       FROM chats c
       JOIN chat_participants cp1
@@ -181,14 +184,14 @@ router.get("/chats", async (req, res) => {
        AND cp2.user_id <> $1
       JOIN profiles p
         ON p.id = cp2.user_id
-      JOIN LATERAL (
+      LEFT JOIN LATERAL (
         SELECT content, created_at
         FROM messages
         WHERE chat_id = c.id
         ORDER BY created_at DESC
         LIMIT 1
       ) m ON true
-      ORDER BY m.created_at DESC
+      ORDER BY m.created_at DESC NULLS LAST
       `,
       [user.id]
     );
@@ -210,7 +213,6 @@ router.delete("/chat/:chatId", async (req, res) => {
   const { chatId } = req.params;
 
   try {
-    // Soft delete for this user
     await pool.query(
       `
       UPDATE chat_participants
@@ -220,7 +222,6 @@ router.delete("/chat/:chatId", async (req, res) => {
       [chatId, user.id]
     );
 
-    // If nobody has it active, hard delete
     const remaining = await pool.query(
       `
       SELECT COUNT(*) AS cnt

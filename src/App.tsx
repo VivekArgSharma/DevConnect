@@ -30,7 +30,11 @@ const queryClient = new QueryClient();
 
 export default function App() {
   return (
-    <ThemeProvider attribute="class" defaultTheme="dark" themes={["light", "dark", "rose"]}>
+    <ThemeProvider
+      attribute="class"
+      defaultTheme="dark"
+      themes={["light", "dark", "rose"]}
+    >
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
           <BrowserRouter>
@@ -51,7 +55,6 @@ export default function App() {
                 <Route path="/admin/blogs/:id" element={<BlogDetails />} />
                 <Route path="/admin/projects/:id" element={<ProjectDetails />} />
 
-
                 {/* CREATE POST */}
                 <Route path="/post/:id" element={<Post />} />
                 <Route path="/post" element={<Post />} />
@@ -66,12 +69,12 @@ export default function App() {
 
                 {/* CHAT */}
                 <Route path="/chats" element={<Chats />} />
-                <Route path="/chat/:chatId" element={<ChatPage />} />
+                <Route path="/chat/:otherUserId" element={<ChatPage />} />
 
                 {/* TEAMS */}
                 <Route path="/teams" element={<TeamFinder />} />
 
-                {/* 🔒 ADMIN (BACKEND SECURED) */}
+                {/* 🔒 ADMIN */}
                 <Route path="/admin" element={<AdminDashboard />} />
 
                 {/* FALLBACK */}

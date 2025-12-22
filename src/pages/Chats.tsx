@@ -1,74 +1,92 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabaseClient";
-import axios from "axios";
 import { useNavigate } from "react-router-dom";
-import { MessageCircle, Loader2 } from "lucide-react";
+import { supabase } from "@/lib/supabaseClient";
 import Squares from "@/components/ui/Squares";
 
-interface ChatItem {
-  chat_id: string;
-  other_user_name: string;
-  avatar_url: string | null;
-  last_message: string;
-  last_message_time: string;
-  unread_count: number;
-}
+type ChatPreview = {
+  chatId: string;
+  otherUserId: string;
+  otherUserName: string;
+  avatarUrl: string | null;
+  lastMessage: string;
+  createdAt: string;
+};
 
 export default function Chats() {
-  const [chats, setChats] = useState<ChatItem[]>([]);
+  const [chats, setChats] = useState<ChatPreview[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
     async function loadChats() {
-      const { data } = await supabase.auth.getSession();
-      const session = data.session;
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
 
-      if (!session) {
+      if (!user) {
         setLoading(false);
         return;
       }
 
-      try {
-        const res = await axios.get(
-          `${import.meta.env.VITE_CHAT_SERVER_URL}/chats`,
-          {
-            headers: {
-              Authorization: `Bearer ${session.access_token}`,
-            },
-          }
-        );
+      // 1️⃣ Get latest message per chat
+      const { data: messages, error } = await supabase
+        .from("messages")
+        .select("chat_id, content, created_at")
+        .like("chat_id", `%${user.id}%`)
+        .order("created_at", { ascending: false });
 
-        setChats(res.data.chats || []);
-      } catch (err) {
-        console.error("Failed to load chats", err);
-      } finally {
+      if (error || !messages) {
+        console.error(error);
         setLoading(false);
+        return;
       }
+
+      // 2️⃣ Deduplicate by chat_id (keep latest message)
+      const seen = new Set<string>();
+      const latestPerChat = messages.filter((m) => {
+        if (seen.has(m.chat_id)) return false;
+        seen.add(m.chat_id);
+        return true;
+      });
+
+      // 3️⃣ Resolve other user + profile
+      const previews: ChatPreview[] = [];
+
+      for (const msg of latestPerChat) {
+        const [a, b] = msg.chat_id.split("_");
+        const otherUserId = a === user.id ? b : a;
+
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("full_name, avatar_url")
+          .eq("id", otherUserId)
+          .single();
+
+        previews.push({
+          chatId: msg.chat_id,
+          otherUserId,
+          otherUserName: profile?.full_name ?? "Unknown",
+          avatarUrl: profile?.avatar_url ?? null,
+          lastMessage: msg.content,
+          createdAt: msg.created_at,
+        });
+      }
+
+      setChats(previews);
+      setLoading(false);
     }
 
     loadChats();
   }, []);
 
   if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)]">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-        <p className="text-muted-foreground mt-4">Loading chats...</p>
-      </div>
-    );
+    return <div className="p-6 text-muted-foreground">Loading chats…</div>;
   }
 
   if (chats.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)] px-4">
-        <div className="text-center max-w-md">
-          <div className="w-16 h-16 rounded-full bg-secondary flex items-center justify-center mx-auto mb-6">
-            <MessageCircle className="w-8 h-8 text-muted-foreground" />
-          </div>
-          <h2 className="text-2xl font-bold mb-2 text-foreground">No chats yet</h2>
-          <p className="text-muted-foreground">Start a conversation by messaging another developer</p>
-        </div>
+      <div className="flex items-center justify-center min-h-[60vh] text-muted-foreground">
+        No conversations yet
       </div>
     );
   }
@@ -84,51 +102,41 @@ export default function Chats() {
           hoverFillColor="hsl(var(--primary) / 0.1)"
         />
       </div>
-      <div className="max-w-2xl mx-auto px-4 pb-20 relative">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-foreground">Messages</h1>
-        <p className="text-muted-foreground mt-1">{chats.length} conversation{chats.length !== 1 ? 's' : ''}</p>
-      </div>
 
-      <div className="flex flex-col gap-2">
+      <div className="max-w-2xl mx-auto p-4 space-y-2">
+        <h1 className="text-2xl font-bold mb-4">Messages</h1>
+
         {chats.map((chat) => (
           <div
-            key={chat.chat_id}
-            onClick={() => navigate(`/chat/${chat.chat_id}`)}
-            className="flex items-center gap-4 p-4 bg-card border border-border rounded-xl cursor-pointer transition-all duration-200 hover:border-primary/40 hover:shadow-lg hover:shadow-primary/5"
+            key={chat.chatId}
+            onClick={() => navigate(`/chat/${chat.otherUserId}`)}
+            className="flex items-center gap-4 p-4 bg-card border border-border rounded-lg cursor-pointer hover:bg-secondary transition"
           >
-            <div className="relative">
-              <img
-                src={chat.avatar_url || "/default-avatar.png"}
-                className="w-12 h-12 rounded-full object-cover border border-border"
-                alt={chat.other_user_name}
-              />
-              {chat.unread_count > 0 && (
-                <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
-                  {chat.unread_count}
-                </span>
-              )}
-            </div>
+            <img
+              src={chat.avatarUrl || "/default-avatar.png"}
+              className="w-12 h-12 rounded-full object-cover"
+              alt={chat.otherUserName}
+            />
 
             <div className="flex-1 min-w-0">
-              <div className="flex items-center justify-between">
-                <span className={`font-semibold text-foreground ${chat.unread_count > 0 ? '' : ''}`}>
-                  {chat.other_user_name}
+              <div className="flex justify-between items-center">
+                <span className="font-semibold truncate">
+                  {chat.otherUserName}
                 </span>
-                <span className="text-xs text-muted-foreground flex-shrink-0 ml-2">
-                  {new Date(chat.last_message_time).toLocaleTimeString([], {
+                <span className="text-xs text-muted-foreground">
+                  {new Date(chat.createdAt).toLocaleTimeString([], {
                     hour: "2-digit",
                     minute: "2-digit",
                   })}
                 </span>
               </div>
-              <p className={`text-sm truncate mt-0.5 ${chat.unread_count > 0 ? 'text-foreground' : 'text-muted-foreground'}`}>
-                {chat.last_message}
+
+              <p className="text-sm text-muted-foreground truncate">
+                {chat.lastMessage}
               </p>
             </div>
           </div>
         ))}
-      </div>
       </div>
     </>
   );

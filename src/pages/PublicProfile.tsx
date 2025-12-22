@@ -3,7 +3,6 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { ProjectCard } from "@/components/ui/project-card";
 import FollowButton from "@/components/FollowButton";
-import axios from "axios";
 import Squares from "@/components/ui/Squares";
 
 interface Profile {
@@ -17,15 +16,16 @@ interface Profile {
 }
 
 export default function PublicProfile() {
-  const { userId } = useParams();
+  const { userId } = useParams<{ userId: string }>();
   const navigate = useNavigate();
+
   const [profile, setProfile] = useState<Profile | null>(null);
   const [posts, setPosts] = useState<any[] | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
-  // ------------------------------
-  // LOAD CURRENT USER SESSION
-  // ------------------------------
+  /* ------------------------------
+     LOAD CURRENT USER SESSION
+  ------------------------------ */
   useEffect(() => {
     async function loadSession() {
       const { data } = await supabase.auth.getSession();
@@ -34,13 +34,13 @@ export default function PublicProfile() {
     loadSession();
   }, []);
 
-  // ------------------------------
-  // LOAD PROFILE & POSTS
-  // ------------------------------
+  /* ------------------------------
+     LOAD PROFILE & POSTS
+  ------------------------------ */
   useEffect(() => {
     if (!userId) return;
 
-    const load = async () => {
+    async function load() {
       const { data: profileData } = await supabase
         .from("profiles")
         .select("*")
@@ -55,45 +55,14 @@ export default function PublicProfile() {
         .eq("user_id", userId)
         .order("created_at", { ascending: false });
 
-      setPosts(postsData);
-    };
+      setPosts(postsData || []);
+    }
 
     load();
   }, [userId]);
 
   if (!profile) {
     return <div className="p-6">Loading...</div>;
-  }
-
-  // ------------------------------
-  // DM HANDLER (✅ SECURE)
-  // ------------------------------
-  async function handleDM() {
-    const sessionRes = await supabase.auth.getSession();
-    const token = sessionRes.data.session?.access_token;
-
-    if (!token) {
-      alert("Please sign in to send a message.");
-      return;
-    }
-
-    try {
-      const resp = await axios.post(
-        `${import.meta.env.VITE_CHAT_SERVER_URL}/chat/open`,
-        { other_user_id: userId },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      const chatId = resp.data.chat_id;
-      navigate(`/chat/${chatId}`);
-    } catch (error) {
-      console.error("DM ERROR:", error);
-      alert("Could not open chat.");
-    }
   }
 
   return (
@@ -107,9 +76,9 @@ export default function PublicProfile() {
           hoverFillColor="hsl(var(--primary) / 0.1)"
         />
       </div>
+
       <div className="p-6 max-w-4xl mx-auto relative">
         <div className="bg-card/80 backdrop-blur-sm p-6 rounded-lg border border-border">
-
           {/* HEADER */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
@@ -119,18 +88,22 @@ export default function PublicProfile() {
                 alt="avatar"
               />
               <div>
-                <h2 className="text-2xl font-bold text-foreground">{profile.full_name}</h2>
-                <p className="text-muted-foreground">@{profile.username}</p>
+                <h2 className="text-2xl font-bold text-foreground">
+                  {profile.full_name}
+                </h2>
+                <p className="text-muted-foreground">
+                  @{profile.username}
+                </p>
               </div>
             </div>
 
-            {/* Right-side buttons */}
+            {/* ACTIONS */}
             <div className="flex gap-3">
               {userId && <FollowButton targetUserId={userId} />}
 
               {currentUserId && currentUserId !== userId && (
                 <button
-                  onClick={handleDM}
+                  onClick={() => navigate(`/chat/${userId}`)}
                   className="px-3 py-1 rounded bg-primary text-primary-foreground hover:bg-primary/90"
                 >
                   DM
@@ -160,7 +133,10 @@ export default function PublicProfile() {
             )}
 
             {profile.skills?.map((s) => (
-              <span key={s} className="text-xs bg-secondary text-foreground px-2 py-1 rounded">
+              <span
+                key={s}
+                className="text-xs bg-secondary text-foreground px-2 py-1 rounded"
+              >
                 {s}
               </span>
             ))}
@@ -168,7 +144,9 @@ export default function PublicProfile() {
 
           {/* POSTS */}
           <div className="mt-6">
-            <h3 className="text-lg font-medium mb-3 text-foreground">Posts</h3>
+            <h3 className="text-lg font-medium mb-3 text-foreground">
+              Posts
+            </h3>
 
             {posts?.length === 0 && (
               <div className="text-sm text-muted-foreground">
