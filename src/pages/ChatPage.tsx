@@ -44,13 +44,12 @@ export default function ChatPage() {
     if (!chatId || !userId) return;
 
     async function loadMessages() {
-      // Check if user deleted this chat before
       const { data: deletion } = await supabase
         .from("chat_deletions")
         .select("deleted_at")
         .eq("chat_id", chatId)
         .eq("user_id", userId)
-        .single();
+        .maybeSingle();
 
       let query = supabase
         .from("messages")
@@ -87,12 +86,9 @@ export default function ChatPage() {
         },
         (payload) => {
           const incoming = payload.new as Message;
-
-          setMessages((prev) => {
-            const exists = prev.some((m) => m.id === incoming.id);
-            if (exists) return prev;
-            return [...prev, incoming];
-          });
+          setMessages((prev) =>
+            prev.some((m) => m.id === incoming.id) ? prev : [...prev, incoming]
+          );
         }
       )
       .subscribe();
@@ -133,7 +129,6 @@ export default function ChatPage() {
     });
 
     if (error) {
-      console.error("Send message failed:", error);
       setMessages((prev) =>
         prev.filter((m) => m.id !== optimisticMessage.id)
       );
@@ -142,7 +137,7 @@ export default function ChatPage() {
   }
 
   /* -------------------------
-     Delete chat (PER-USER)
+     Delete chat (PER-USER, SAFE)
   ------------------------- */
   async function deleteChat() {
     if (!chatId || !userId) return;
@@ -153,18 +148,22 @@ export default function ChatPage() {
 
     if (!confirmDelete) return;
 
-    const { error } = await supabase.from("chat_deletions").upsert({
-      chat_id: chatId,
-      user_id: userId,
-      deleted_at: new Date().toISOString(),
-    });
+    const { error } = await supabase.from("chat_deletions").upsert(
+      {
+        chat_id: chatId,
+        user_id: userId,
+        deleted_at: new Date().toISOString(),
+      },
+      {
+        onConflict: "chat_id,user_id",
+      }
+    );
 
     if (error) {
       alert(error.message);
       return;
     }
 
-    // Clear messages locally
     setMessages([]);
   }
 
@@ -174,7 +173,6 @@ export default function ChatPage() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-6rem)] max-w-2xl mx-auto p-4">
-      {/* HEADER */}
       <div className="flex items-center justify-between mb-3">
         <h2 className="font-semibold text-lg">Chat</h2>
         <button
@@ -185,7 +183,6 @@ export default function ChatPage() {
         </button>
       </div>
 
-      {/* MESSAGES */}
       <div className="flex-1 overflow-y-auto space-y-2 mb-4 border border-border rounded p-2">
         {messages.map((m) => (
           <div
@@ -202,7 +199,6 @@ export default function ChatPage() {
         <div ref={bottomRef} />
       </div>
 
-      {/* INPUT */}
       <div className="flex gap-2">
         <input
           value={text}
