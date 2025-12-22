@@ -23,7 +23,7 @@ export default function DMButton({ otherUserId }) {
       const resp = await axios.post(
         `${
           import.meta.env.VITE_CHAT_SERVER_URL || "http://localhost:4000"
-        }/chat/open`,
+        }/api/chat/open`,
         { other_user_id: otherUserId },
         {
           headers: {
