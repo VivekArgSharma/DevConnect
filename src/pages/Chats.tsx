@@ -31,7 +31,7 @@ export default function Chats() {
 
       try {
         const res = await axios.get(
-          `${import.meta.env.VITE_CHAT_SERVER_URL}/chats`,
+          `${import.meta.env.VITE_CHAT_SERVER_URL}/api/chats`,
           {
             headers: {
               Authorization: `Bearer ${session.access_token}`,

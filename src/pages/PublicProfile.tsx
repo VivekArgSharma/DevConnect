@@ -79,7 +79,7 @@ export default function PublicProfile() {
 
     try {
       const resp = await axios.post(
-        `${import.meta.env.VITE_CHAT_SERVER_URL}/chat/open`,
+        `${import.meta.env.VITE_CHAT_SERVER_URL}/api/chat/open`,
         { other_user_id: userId },
         {
           headers: {

@@ -50,7 +50,7 @@ export default function ChatPage() {
 
       try {
         const resp = await axios.get(
-          `${import.meta.env.VITE_CHAT_SERVER_URL}/chat/${chatId}/messages`,
+          `${import.meta.env.VITE_CHAT_SERVER_URL}/api/chat/${chatId}/messages`,
           {
             headers: { Authorization: `Bearer ${token}` },
           }
@@ -90,7 +90,7 @@ export default function ChatPage() {
     if (!window.confirm("Delete this chat?")) return;
 
     await axios.delete(
-      `${import.meta.env.VITE_CHAT_SERVER_URL}/chat/${chatId}`,
+      `${import.meta.env.VITE_CHAT_SERVER_URL}/api/chat/${chatId}`,
       {
         headers: { Authorization: `Bearer ${session.access_token}` },
       }
