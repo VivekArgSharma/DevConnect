@@ -70,7 +70,7 @@ app.use("/api/ai", aiRoutes);
 app.use("/api/admin", adminRoutes);
 
 // chat REST routes
-app.use(chatRoutes);
+app.use("/api", chatRoutes);
 
 /* -----------------------------------------------------
    SOCKET.IO
