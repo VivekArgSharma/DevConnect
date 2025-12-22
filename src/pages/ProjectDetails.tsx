@@ -205,47 +205,74 @@ export default function ProjectDetails() {
 
 /* ---------------- HELPERS ---------------- */
 function buildCommentTree(flat: any[]) {
-  const map = new Map();
-  flat.forEach((c: any) => map.set(c.id, { ...c, children: [] }));
+  const map = new Map<string, any>();
+  for (const r of flat) map.set(r.id, { ...r, children: [] });
   const roots: any[] = [];
-  flat.forEach((c: any) => {
-    const node = map.get(c.id);
-    if (node.parent_id && map.get(node.parent_id)) {
-      map.get(node.parent_id).children.push(node);
+  for (const r of flat) {
+    const node = map.get(r.id);
+    if (!node) continue;
+    if (node.parent_id) {
+      const parent = map.get(node.parent_id);
+      parent ? parent.children.push(node) : roots.push(node);
     } else roots.push(node);
-  });
+  }
   return roots;
 }
 
-function CommentNode({
-  node,
-  depth,
-  currentUserId,
-  goToUser,
-  onReplySubmit,
-  onDelete,
-}: any) {
+/* CommentNode updated with theme tokens */
+function CommentNode({ node, depth, goToUser, currentUserId, onReplySubmit, onDelete }: any) {
+  const [showReply, setShowReply] = useState(false);
+  const [replyText, setReplyText] = useState("");
+
+  const author = node.profiles?.full_name ?? node.full_name ?? "Unknown";
+  const avatar =
+    node.profiles?.avatar_url ||
+    `https://ui-avatars.com/api/?name=${encodeURIComponent(author)}`;
+
   return (
-    <div style={{ marginLeft: depth * 16 }} className="mt-3">
-      <p
-        className="font-semibold cursor-pointer text-primary hover:underline"
-        onClick={() => goToUser(node.user_id)}
-      >
-        {node.content}
-      </p>
-      {currentUserId === node.user_id && (
-        <button onClick={() => onDelete(node.id)}>Delete</button>
-      )}
-      {node.children.map((c: any) => (
-        <CommentNode
-          key={c.id}
-          node={c}
-          depth={depth + 1}
-          currentUserId={currentUserId}
-          goToUser={goToUser}
-          onReplySubmit={onReplySubmit}
-          onDelete={onDelete}
-        />
+    <div>
+      <div className={`p-3 rounded ${depth === 0 ? "bg-card border border-border" : "bg-secondary"}`} style={{ marginLeft: depth * 18 }}>
+        <div className="flex gap-3">
+          <img src={avatar} className="w-10 h-10 rounded-full cursor-pointer" onClick={() => goToUser(node.user_id)} />
+          <div className="flex-1">
+            <p className="font-semibold cursor-pointer text-primary hover:underline" onClick={() => goToUser(node.user_id)}>
+              {author}
+            </p>
+            <p className="text-xs text-muted-foreground">{new Date(node.created_at).toLocaleString()}</p>
+            <p className="mt-2 whitespace-pre-wrap text-foreground">{node.content}</p>
+
+            <div className="mt-2 flex gap-3">
+              <button className="text-sm underline text-primary" onClick={() => setShowReply(!showReply)}>
+                Reply
+              </button>
+              {currentUserId === node.user_id && (
+                <button className="text-sm text-destructive underline" onClick={() => onDelete(node.id)}>
+                  Delete
+                </button>
+              )}
+            </div>
+
+            {showReply && (
+              <div className="mt-2">
+                <Textarea value={replyText} onChange={(e) => setReplyText(e.target.value)} />
+                <Button
+                  className="mt-2"
+                  onClick={() => {
+                    onReplySubmit(node.id, replyText);
+                    setReplyText("");
+                    setShowReply(false);
+                  }}
+                >
+                  Reply
+                </Button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {node.children?.map((c: any) => (
+        <CommentNode key={c.id} node={c} depth={depth + 1} goToUser={goToUser} currentUserId={currentUserId} onReplySubmit={onReplySubmit} onDelete={onDelete} />
       ))}
     </div>
   );
