@@ -111,7 +111,6 @@ export const PillBase: React.FC<PillBaseProps> = ({ onExpandedChange }) => {
      UNREAD COUNT — BACKEND REMOVED (INTENTIONAL)
   ====================================================== */
   useEffect(() => {
-    // Chat backend removed — disable unread count for now
     setUnreadTotal(0);
   }, [location.pathname]);
 
