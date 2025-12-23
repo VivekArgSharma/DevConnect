@@ -206,21 +206,47 @@ export default function ProjectDetails() {
 /* ---------------- HELPERS ---------------- */
 function buildCommentTree(flat: any[]) {
   const map = new Map<string, any>();
-  for (const r of flat) map.set(r.id, { ...r, children: [] });
+
+  // 1️⃣ Create nodes (preserve existing children if optimistic)
+  for (const r of flat) {
+    map.set(r.id, {
+      ...r,
+      children: r.children ?? [],
+    });
+  }
+
   const roots: any[] = [];
+
+  // 2️⃣ Build tree
   for (const r of flat) {
     const node = map.get(r.id);
     if (!node) continue;
+
     if (node.parent_id) {
       const parent = map.get(node.parent_id);
-      parent ? parent.children.push(node) : roots.push(node);
-    } else roots.push(node);
+      if (parent) {
+        parent.children.push(node);
+      } else {
+        // parent not found yet → treat as root (safe fallback)
+        roots.push(node);
+      }
+    } else {
+      roots.push(node);
+    }
   }
+
   return roots;
 }
 
-/* CommentNode updated with theme tokens */
-function CommentNode({ node, depth, goToUser, currentUserId, onReplySubmit, onDelete }: any) {
+/* ---------------- COMMENT NODE ---------------- */
+function CommentNode({
+  node,
+  depth,
+  goToUser,
+  currentUserId,
+  onReplySubmit,
+  onDelete,
+}: any) {
   const [showReply, setShowReply] = useState(false);
   const [replyText, setReplyText] = useState("");
 
@@ -229,24 +255,59 @@ function CommentNode({ node, depth, goToUser, currentUserId, onReplySubmit, onDe
     node.profiles?.avatar_url ||
     `https://ui-avatars.com/api/?name=${encodeURIComponent(author)}`;
 
+  const isOptimistic = node.id?.startsWith("temp-");
+
   return (
     <div>
-      <div className={`p-3 rounded ${depth === 0 ? "bg-card border border-border" : "bg-secondary"}`} style={{ marginLeft: depth * 18 }}>
+      <div
+        className={`p-3 rounded ${
+          depth === 0
+            ? "bg-card border border-border"
+            : "bg-secondary"
+        } ${isOptimistic ? "opacity-80" : ""}`}
+        style={{ marginLeft: depth * 18 }}
+      >
         <div className="flex gap-3">
-          <img src={avatar} className="w-10 h-10 rounded-full cursor-pointer" onClick={() => goToUser(node.user_id)} />
+          <img
+            src={avatar}
+            className="w-10 h-10 rounded-full cursor-pointer"
+            onClick={() => goToUser(node.user_id)}
+          />
+
           <div className="flex-1">
-            <p className="font-semibold cursor-pointer text-primary hover:underline" onClick={() => goToUser(node.user_id)}>
+            <p
+              className="font-semibold cursor-pointer text-primary hover:underline"
+              onClick={() => goToUser(node.user_id)}
+            >
               {author}
+              {isOptimistic && (
+                <span className="ml-2 text-xs text-muted-foreground">
+                  (sending…)
+                </span>
+              )}
             </p>
-            <p className="text-xs text-muted-foreground">{new Date(node.created_at).toLocaleString()}</p>
-            <p className="mt-2 whitespace-pre-wrap text-foreground">{node.content}</p>
+
+            <p className="text-xs text-muted-foreground">
+              {new Date(node.created_at).toLocaleString()}
+            </p>
+
+            <p className="mt-2 whitespace-pre-wrap text-foreground">
+              {node.content}
+            </p>
 
             <div className="mt-2 flex gap-3">
-              <button className="text-sm underline text-primary" onClick={() => setShowReply(!showReply)}>
+              <button
+                className="text-sm underline text-primary"
+                onClick={() => setShowReply(!showReply)}
+              >
                 Reply
               </button>
+
               {currentUserId === node.user_id && (
-                <button className="text-sm text-destructive underline" onClick={() => onDelete(node.id)}>
+                <button
+                  className="text-sm text-destructive underline"
+                  onClick={() => onDelete(node.id)}
+                >
                   Delete
                 </button>
               )}
@@ -254,10 +315,14 @@ function CommentNode({ node, depth, goToUser, currentUserId, onReplySubmit, onDe
 
             {showReply && (
               <div className="mt-2">
-                <Textarea value={replyText} onChange={(e) => setReplyText(e.target.value)} />
+                <Textarea
+                  value={replyText}
+                  onChange={(e) => setReplyText(e.target.value)}
+                />
                 <Button
                   className="mt-2"
                   onClick={() => {
+                    if (!replyText.trim()) return;
                     onReplySubmit(node.id, replyText);
                     setReplyText("");
                     setShowReply(false);
@@ -271,8 +336,17 @@ function CommentNode({ node, depth, goToUser, currentUserId, onReplySubmit, onDe
         </div>
       </div>
 
+      {/* CHILDREN */}
       {node.children?.map((c: any) => (
-        <CommentNode key={c.id} node={c} depth={depth + 1} goToUser={goToUser} currentUserId={currentUserId} onReplySubmit={onReplySubmit} onDelete={onDelete} />
+        <CommentNode
+          key={c.id}
+          node={c}
+          depth={depth + 1}
+          goToUser={goToUser}
+          currentUserId={currentUserId}
+          onReplySubmit={onReplySubmit}
+          onDelete={onDelete}
+        />
       ))}
     </div>
   );
