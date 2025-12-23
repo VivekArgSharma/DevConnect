@@ -20,6 +20,7 @@ export default function ChatPage() {
   const [userId, setUserId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [text, setText] = useState("");
+  const [realtimeReady, setRealtimeReady] = useState(false);
 
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
@@ -38,10 +39,12 @@ export default function ChatPage() {
   }, []);
 
   /* -------------------------
-     Load existing messages (PER-USER DELETE SAFE)
+     Load existing messages (authoritative)
   ------------------------- */
   useEffect(() => {
     if (!chatId || !userId) return;
+
+    let cancelled = false;
 
     async function loadMessages() {
       const { data: deletion } = await supabase
@@ -62,17 +65,26 @@ export default function ChatPage() {
       }
 
       const { data } = await query;
-      setMessages((data as Message[]) || []);
+
+      if (!cancelled) {
+        setMessages((data as Message[]) || []);
+      }
     }
 
     loadMessages();
+
+    return () => {
+      cancelled = true;
+    };
   }, [chatId, userId]);
 
   /* -------------------------
-     Realtime subscription
+     Realtime subscription (WhatsApp-style)
   ------------------------- */
   useEffect(() => {
-    if (!chatId) return;
+    if (!chatId || !userId) return;
+
+    setRealtimeReady(false);
 
     const channel = supabase
       .channel(`chat:${chatId}`)
@@ -86,17 +98,24 @@ export default function ChatPage() {
         },
         (payload) => {
           const incoming = payload.new as Message;
-          setMessages((prev) =>
-            prev.some((m) => m.id === incoming.id) ? prev : [...prev, incoming]
-          );
+
+          setMessages((prev) => {
+            // Deduplicate (important for optimistic UI)
+            if (prev.some((m) => m.id === incoming.id)) return prev;
+            return [...prev, incoming];
+          });
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED") {
+          setRealtimeReady(true);
+        }
+      });
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [chatId]);
+  }, [chatId, userId]);
 
   /* -------------------------
      Auto-scroll
@@ -111,17 +130,21 @@ export default function ChatPage() {
   async function sendMessage() {
     if (!text.trim() || !chatId || !userId) return;
 
+    const optimisticId = crypto.randomUUID();
+
     const optimisticMessage: Message = {
-      id: crypto.randomUUID(),
+      id: optimisticId,
       chat_id: chatId,
       sender_id: userId,
       content: text.trim(),
       created_at: new Date().toISOString(),
     };
 
+    // 1️⃣ Show immediately
     setMessages((prev) => [...prev, optimisticMessage]);
     setText("");
 
+    // 2️⃣ Persist
     const { error } = await supabase.from("messages").insert({
       chat_id: chatId,
       sender_id: userId,
@@ -129,9 +152,8 @@ export default function ChatPage() {
     });
 
     if (error) {
-      setMessages((prev) =>
-        prev.filter((m) => m.id !== optimisticMessage.id)
-      );
+      // rollback
+      setMessages((prev) => prev.filter((m) => m.id !== optimisticId));
       alert(error.message);
     }
   }
@@ -173,6 +195,7 @@ export default function ChatPage() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-6rem)] max-w-2xl mx-auto p-4">
+      {/* HEADER */}
       <div className="flex items-center justify-between mb-3">
         <h2 className="font-semibold text-lg">Chat</h2>
         <button
@@ -183,6 +206,7 @@ export default function ChatPage() {
         </button>
       </div>
 
+      {/* MESSAGES */}
       <div className="flex-1 overflow-y-auto space-y-2 mb-4 border border-border rounded p-2">
         {messages.map((m) => (
           <div
@@ -199,17 +223,24 @@ export default function ChatPage() {
         <div ref={bottomRef} />
       </div>
 
+      {/* INPUT */}
       <div className="flex gap-2">
         <input
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && sendMessage()}
           className="flex-1 border rounded px-3 py-2"
-          placeholder="Type a message..."
+          placeholder={
+            realtimeReady
+              ? "Type a message..."
+              : "Connecting to chat..."
+          }
+          disabled={!realtimeReady}
         />
         <button
           onClick={sendMessage}
-          className="px-4 py-2 rounded bg-primary text-primary-foreground"
+          disabled={!realtimeReady}
+          className="px-4 py-2 rounded bg-primary text-primary-foreground disabled:opacity-50"
         >
           Send
         </button>
